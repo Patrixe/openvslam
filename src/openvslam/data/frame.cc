@@ -17,6 +17,12 @@ namespace data {
 
 std::atomic<unsigned int> frame::next_id_{0};
 
+frame::frame(const double timestamp, feature::orb_extractor* extractor_left, feature::orb_extractor* extractor_right,
+             bow_vocabulary* bow_vocab, camera::base* camera, const float depth_thr)
+    : id_(next_id_++), bow_vocab_(bow_vocab), extractor_(extractor_left), extractor_right_(extractor_right),
+      timestamp_(timestamp), camera_(camera), depth_thr_(depth_thr) {
+}
+
 frame::frame(const cv::Mat& img_gray, const double timestamp,
              feature::orb_extractor* extractor, bow_vocabulary* bow_vocab,
              camera::base* camera, const float depth_thr,
@@ -283,6 +289,5 @@ void frame::compute_stereo_from_depth(const cv::Mat& right_img_depth) {
         stereo_x_right_.at(idx) = undist_keypt.pt.x - camera_->focal_x_baseline_ / depth;
     }
 }
-
 } // namespace data
 } // namespace openvslam

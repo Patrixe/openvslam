@@ -20,7 +20,7 @@ public:
 
     std::vector<frame> get_frames() const;
 
-private:
+protected:
     const double fps_;
 
     std::vector<std::string> img_file_paths_;

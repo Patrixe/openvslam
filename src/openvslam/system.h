@@ -35,6 +35,9 @@ class frame_publisher;
 
 class system {
 public:
+    // default constructor allowing to do initialization in derived classes
+    system() = default;
+
     //! Constructor
     system(const std::shared_ptr<config>& cfg, const std::string& vocab_file_path);
 
@@ -143,7 +146,7 @@ public:
     //!! Termination of the system is requested or not
     bool terminate_is_requested() const;
 
-private:
+protected:
     //! Check reset request of the system
     void check_reset_request();
 
@@ -154,7 +157,7 @@ private:
     void resume_other_threads() const;
 
     //! config
-    const std::shared_ptr<config> cfg_;
+    std::shared_ptr<config> cfg_;
     //! camera model
     camera::base* camera_ = nullptr;
 

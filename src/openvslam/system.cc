@@ -345,4 +345,5 @@ void system::resume_other_threads() const {
     }
 }
 
+
 } // namespace openvslam

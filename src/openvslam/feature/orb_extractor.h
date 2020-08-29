@@ -74,7 +74,7 @@ public:
     //! Image pyramid
     std::vector<cv::Mat> image_pyramid_;
 
-private:
+protected:
     //! Initialize orb extractor
     void initialize();
 
@@ -88,7 +88,7 @@ private:
     void compute_image_pyramid(const cv::Mat& image);
 
     //! Compute fast keypoints for cells in each image pyramid
-    void compute_fast_keypoints(std::vector<std::vector<cv::KeyPoint>>& all_keypts, const cv::Mat& mask) const;
+    virtual void compute_fast_keypoints(std::vector<std::vector<cv::KeyPoint>>& all_keypts, const cv::Mat& mask) const;
 
     //! Pick computed keypoints on the image uniformly
     std::vector<cv::KeyPoint> distribute_keypoints_via_tree(const std::vector<cv::KeyPoint>& keypts_to_distribute,

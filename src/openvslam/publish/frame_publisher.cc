@@ -32,7 +32,7 @@ cv::Mat frame_publisher::draw_frame(const bool draw_text) {
     // copy to avoid memory access conflict
     {
         std::lock_guard<std::mutex> lock(mtx_);
-
+        // TODO pali: optimization possible?
         img_.copyTo(img);
 
         tracking_state = tracking_state_;

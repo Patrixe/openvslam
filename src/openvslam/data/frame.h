@@ -44,6 +44,22 @@ public:
     bool operator!=(const frame& frm) { return !(*this == frm); }
 
     /**
+     * Constructor which only initialises reference members. Useful for inherited classes.
+     * Other parameters need to be assigned in function body in order to avoid duplicate signatures.
+     * @param img_gray
+     * @param img_depth
+     * @param timestamp
+     * @param extractor
+     * @param bow_vocab
+     * @param camera
+     * @param depth_thr
+     * @param mask
+     */
+    frame(double timestamp, feature::orb_extractor* extractor_left,
+          feature::orb_extractor* extractor_right, bow_vocabulary* bow_vocab,
+          camera::base* camera, float depth_thr);
+
+    /**
      * Constructor for monocular frame
      * @param img_gray
      * @param timestamp
@@ -244,7 +260,7 @@ public:
     //! list of 1 / sigma^2 for optimization
     std::vector<float> inv_level_sigma_sq_;
 
-private:
+protected:
     //! enumeration to control the behavior of extract_orb()
     enum class image_side { Left,
                             Right };

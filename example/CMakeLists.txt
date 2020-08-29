@@ -44,6 +44,9 @@ list(APPEND EXECUTABLE_TARGETS run_camera_localization)
 add_executable(run_image_slam run_image_slam.cc util/image_util.cc)
 list(APPEND EXECUTABLE_TARGETS run_image_slam)
 
+add_executable(run_seg_image_slam run_seg_image_slam.cpp util/image_util.cc util/segmented_image_sequence.cpp util/segmented_image_sequence.h ../src/openvslam/segmentation_tracking_module.cpp ../src/openvslam/segmentation_tracking_module.h)
+list(APPEND EXECUTABLE_TARGETS run_seg_image_slam)
+
 add_executable(run_image_localization run_image_localization.cc util/image_util.cc)
 list(APPEND EXECUTABLE_TARGETS run_image_localization)
 

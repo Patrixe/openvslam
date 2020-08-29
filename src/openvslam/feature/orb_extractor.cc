@@ -131,7 +131,6 @@ void orb_extractor::extract(const cv::_InputArray& in_image, const cv::_InputArr
 
         cv::Mat blurred_image = image_pyramid_.at(level).clone();
         cv::GaussianBlur(blurred_image, blurred_image, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
-
         cv::Mat descriptors_at_level = descriptors.rowRange(offset, offset + num_keypts_at_level);
         compute_orb_descriptors(blurred_image, keypts_at_level, descriptors_at_level);
 
@@ -336,6 +335,7 @@ void orb_extractor::compute_fast_keypoints(std::vector<std::vector<cv::KeyPoint>
                     }
                 }
 
+                // TODO pali: keypts_in_cell contains keypoint location and area, might be the place to further determine keypoint semantic class
                 std::vector<cv::KeyPoint> keypts_in_cell;
                 cv::FAST(image_pyramid_.at(level).rowRange(min_y, max_y).colRange(min_x, max_x),
                          keypts_in_cell, orb_params_.ini_fast_thr_, true);

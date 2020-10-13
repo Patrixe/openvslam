@@ -66,7 +66,7 @@ orb_extractor::orb_extractor(const orb_params& orb_params)
 }
 
 void orb_extractor::extract(const cv::_InputArray& in_image, const cv::_InputArray& in_image_mask,
-                            std::vector<cv::KeyPoint>& keypts, const cv::_OutputArray& out_descriptors) {
+                            data::keypoint_container& keypts, const cv::_OutputArray& out_descriptors) {
     if (in_image.empty()) {
         return;
     }
@@ -84,7 +84,7 @@ void orb_extractor::extract(const cv::_InputArray& in_image, const cv::_InputArr
         mask_is_initialized_ = true;
     }
 
-    std::vector<std::vector<cv::KeyPoint>> all_keypts;
+    std::vector<data::keypoint_container> all_keypts;
 
     // select mask to use
     if (!in_image_mask.empty()) {
@@ -132,11 +132,11 @@ void orb_extractor::extract(const cv::_InputArray& in_image, const cv::_InputArr
         cv::Mat blurred_image = image_pyramid_.at(level).clone();
         cv::GaussianBlur(blurred_image, blurred_image, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
         cv::Mat descriptors_at_level = descriptors.rowRange(offset, offset + num_keypts_at_level);
-        compute_orb_descriptors(blurred_image, keypts_at_level, descriptors_at_level);
+        compute_orb_descriptors(blurred_image, keypts_at_level.get_cv_keypoints(), descriptors_at_level);
 
         offset += num_keypts_at_level;
 
-        correct_keypoint_scale(keypts_at_level, level);
+        correct_keypoint_scale(keypts_at_level.get_cv_keypoints(), level);
 
         keypts.insert(keypts.end(), keypts_at_level.begin(), keypts_at_level.end());
     }
@@ -270,7 +270,7 @@ void orb_extractor::compute_image_pyramid(const cv::Mat& image) {
     }
 }
 
-void orb_extractor::compute_fast_keypoints(std::vector<std::vector<cv::KeyPoint>>& all_keypts, const cv::Mat& mask) const {
+void orb_extractor::compute_fast_keypoints(std::vector<data::keypoint_container>& all_keypts, const cv::Mat& mask) const {
     all_keypts.resize(orb_params_.num_levels_);
 
     // An anonymous function which checks mask(image or rectangle)
@@ -298,7 +298,7 @@ void orb_extractor::compute_fast_keypoints(std::vector<std::vector<cv::KeyPoint>
         const unsigned int num_cols = std::ceil(width / cell_size) + 1;
         const unsigned int num_rows = std::ceil(height / cell_size) + 1;
 
-        std::vector<cv::KeyPoint> keypts_to_distribute;
+        data::keypoint_container keypts_to_distribute;
         keypts_to_distribute.reserve(orb_params_.max_num_keypts_ * 10);
 
 #ifdef USE_OPENMP
@@ -335,7 +335,6 @@ void orb_extractor::compute_fast_keypoints(std::vector<std::vector<cv::KeyPoint>
                     }
                 }
 
-                // TODO pali: keypts_in_cell contains keypoint location and area, might be the place to further determine keypoint semantic class
                 std::vector<cv::KeyPoint> keypts_in_cell;
                 cv::FAST(image_pyramid_.at(level).rowRange(min_y, max_y).colRange(min_x, max_x),
                          keypts_in_cell, orb_params_.ini_fast_thr_, true);
@@ -362,17 +361,14 @@ void orb_extractor::compute_fast_keypoints(std::vector<std::vector<cv::KeyPoint>
                         if (!mask.empty() && is_in_mask(min_border_y + keypt.pt.y, min_border_x + keypt.pt.x, scale_factor)) {
                             continue;
                         }
-                        keypts_to_distribute.push_back(keypt);
+                        keypts_to_distribute.push_back(data::keypoint(keypt));
                     }
                 }
             }
         }
 
-        std::vector<cv::KeyPoint>& keypts_at_level = all_keypts.at(level);
-        keypts_at_level.reserve(orb_params_.max_num_keypts_);
-
         // Distribute keypoints via tree
-        keypts_at_level = distribute_keypoints_via_tree(keypts_to_distribute,
+        data::keypoint_container keypts_at_level = distribute_keypoints_via_tree(keypts_to_distribute,
                                                         min_border_x, max_border_x, min_border_y, max_border_y,
                                                         num_keypts_per_level_.at(level));
 
@@ -381,21 +377,21 @@ void orb_extractor::compute_fast_keypoints(std::vector<std::vector<cv::KeyPoint>
 
         for (auto& keypt : keypts_at_level) {
             // Translation correction (scale will be corrected after ORB description)
-            keypt.pt.x += min_border_x;
-            keypt.pt.y += min_border_y;
+            keypt.get_cv_keypoint().pt.x += min_border_x;
+            keypt.get_cv_keypoint().pt.y += min_border_y;
             // Set the other information
-            keypt.octave = level;
-            keypt.size = scaled_patch_size;
+            keypt.get_cv_keypoint().octave = level;
+            keypt.get_cv_keypoint().size = scaled_patch_size;
         }
     }
 
     // Compute orientations
     for (unsigned int level = 0; level < orb_params_.num_levels_; ++level) {
-        compute_orientation(image_pyramid_.at(level), all_keypts.at(level));
+        compute_orientation(image_pyramid_.at(level), all_keypts.at(level).get_cv_keypoints());
     }
 }
 
-std::vector<cv::KeyPoint> orb_extractor::distribute_keypoints_via_tree(const std::vector<cv::KeyPoint>& keypts_to_distribute,
+data::keypoint_container orb_extractor::distribute_keypoints_via_tree(const data::keypoint_container& keypts_to_distribute,
                                                                        const int min_x, const int max_x, const int min_y, const int max_y,
                                                                        const unsigned int num_keypts) const {
     auto nodes = initialize_nodes(keypts_to_distribute, min_x, max_x, min_y, max_y);
@@ -474,7 +470,7 @@ std::vector<cv::KeyPoint> orb_extractor::distribute_keypoints_via_tree(const std
     return find_keypoints_with_max_response(nodes);
 }
 
-std::list<orb_extractor_node> orb_extractor::initialize_nodes(const std::vector<cv::KeyPoint>& keypts_to_distribute,
+std::list<orb_extractor_node> orb_extractor::initialize_nodes(const data::keypoint_container& keypts_to_distribute,
                                                               const int min_x, const int max_x, const int min_y, const int max_y) const {
     // The aspect ratio of the target area for keypoint detection
     const auto ratio = static_cast<double>(max_x - min_x) / (max_y - min_y);
@@ -527,8 +523,8 @@ std::list<orb_extractor_node> orb_extractor::initialize_nodes(const std::vector<
     // Assign all keypoints to initial nodes which own keypoint's position
     for (const auto& keypt : keypts_to_distribute) {
         // x / y index of the patch where the keypt is placed
-        const unsigned int ix = keypt.pt.x / delta_x;
-        const unsigned int iy = keypt.pt.y / delta_y;
+        const unsigned int ix = keypt.get_cv_keypoint().pt.x / delta_x;
+        const unsigned int iy = keypt.get_cv_keypoint().pt.y / delta_y;
 
         const unsigned int node_idx = ix + iy * num_x_grid;
         initial_nodes.at(node_idx)->keypts_.push_back(keypt);
@@ -565,21 +561,21 @@ void orb_extractor::assign_child_nodes(const std::array<orb_extractor_node, 4>& 
     }
 }
 
-std::vector<cv::KeyPoint> orb_extractor::find_keypoints_with_max_response(std::list<orb_extractor_node>& nodes) const {
+data::keypoint_container orb_extractor::find_keypoints_with_max_response(std::list<orb_extractor_node>& nodes) const {
     // A vector contains result keypoint
-    std::vector<cv::KeyPoint> result_keypts;
+    data::keypoint_container result_keypts;
     result_keypts.reserve(nodes.size());
 
     // Store keypoints which has maximum response in the node patch
     for (auto& node : nodes) {
         auto& node_keypts = node.keypts_;
         auto& keypt = node_keypts.at(0);
-        double max_response = keypt.response;
+        double max_response = keypt.get_cv_keypoint().response;
 
         for (unsigned int k = 1; k < node_keypts.size(); ++k) {
-            if (node_keypts.at(k).response > max_response) {
+            if (node_keypts.at(k).get_cv_keypoint().response > max_response) {
                 keypt = node_keypts.at(k);
-                max_response = node_keypts.at(k).response;
+                max_response = node_keypts.at(k).get_cv_keypoint().response;
             }
         }
 

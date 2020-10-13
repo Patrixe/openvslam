@@ -54,7 +54,7 @@ frame::frame(const cv::Mat& img_gray, const double timestamp,
     outlier_flags_ = std::vector<bool>(num_keypts_, false);
 
     // Assign all the keypoints into grid
-    assign_keypoints_to_grid(camera_, undist_keypts_, keypt_indices_in_cells_);
+    assign_keypoints_to_grid(camera_, undist_keypts_.get_cv_keypoints(), keypt_indices_in_cells_);
 }
 
 frame::frame(const cv::Mat& left_img_gray, const cv::Mat& right_img_gray, const double timestamp,
@@ -81,7 +81,7 @@ frame::frame(const cv::Mat& left_img_gray, const cv::Mat& right_img_gray, const 
 
     // Estimate depth with stereo match
     match::stereo stereo_matcher(extractor_left->image_pyramid_, extractor_right_->image_pyramid_,
-                                 keypts_, keypts_right_, descriptors_, descriptors_right_,
+                                 keypts_.get_cv_keypoints(), keypts_right_.get_cv_keypoints(), descriptors_, descriptors_right_,
                                  scale_factors_, inv_scale_factors_,
                                  camera->focal_x_baseline_, camera_->true_baseline_);
     stereo_matcher.compute(stereo_x_right_, depths_);
@@ -94,7 +94,7 @@ frame::frame(const cv::Mat& left_img_gray, const cv::Mat& right_img_gray, const 
     outlier_flags_ = std::vector<bool>(num_keypts_, false);
 
     // Assign all the keypoints into grid
-    assign_keypoints_to_grid(camera_, undist_keypts_, keypt_indices_in_cells_);
+    assign_keypoints_to_grid(camera_, undist_keypts_.get_cv_keypoints(), keypt_indices_in_cells_);
 }
 
 frame::frame(const cv::Mat& img_gray, const cv::Mat& img_depth, const double timestamp,
@@ -127,7 +127,7 @@ frame::frame(const cv::Mat& img_gray, const cv::Mat& img_depth, const double tim
     outlier_flags_ = std::vector<bool>(num_keypts_, false);
 
     // Assign all the keypoints into grid
-    assign_keypoints_to_grid(camera_, undist_keypts_, keypt_indices_in_cells_);
+    assign_keypoints_to_grid(camera_, undist_keypts_.get_cv_keypoints(), keypt_indices_in_cells_);
 }
 
 void frame::set_cam_pose(const Mat44_t& cam_pose_cw) {
@@ -204,7 +204,7 @@ std::vector<unsigned int> frame::get_keypoints_in_cell(const float ref_x, const 
     return data::get_keypoints_in_cell(camera_, undist_keypts_, keypt_indices_in_cells_, ref_x, ref_y, margin, min_level, max_level);
 }
 
-Vec3_t frame::triangulate_stereo(const unsigned int idx) const {
+Vec3_t frame::triangulate_stereo(const unsigned int idx) {
     assert(camera_->setup_type_ != camera::setup_type_t::Monocular);
 
     switch (camera_->model_type_) {
@@ -213,8 +213,8 @@ Vec3_t frame::triangulate_stereo(const unsigned int idx) const {
 
             const float depth = depths_.at(idx);
             if (0.0 < depth) {
-                const float x = undist_keypts_.at(idx).pt.x;
-                const float y = undist_keypts_.at(idx).pt.y;
+                const float x = undist_keypts_.at(idx).get_cv_keypoint().pt.x;
+                const float y = undist_keypts_.at(idx).get_cv_keypoint().pt.y;
                 const float unproj_x = (x - camera->cx_) * depth * camera->fx_inv_;
                 const float unproj_y = (y - camera->cy_) * depth * camera->fy_inv_;
                 const Vec3_t pos_c{unproj_x, unproj_y, depth};
@@ -231,8 +231,8 @@ Vec3_t frame::triangulate_stereo(const unsigned int idx) const {
 
             const float depth = depths_.at(idx);
             if (0.0 < depth) {
-                const float x = undist_keypts_.at(idx).pt.x;
-                const float y = undist_keypts_.at(idx).pt.y;
+                const float x = undist_keypts_.at(idx).get_cv_keypoint().pt.x;
+                const float y = undist_keypts_.at(idx).get_cv_keypoint().pt.y;
                 const float unproj_x = (x - camera->cx_) * depth * camera->fx_inv_;
                 const float unproj_y = (y - camera->cy_) * depth * camera->fy_inv_;
                 const Vec3_t pos_c{unproj_x, unproj_y, depth};
@@ -273,11 +273,11 @@ void frame::compute_stereo_from_depth(const cv::Mat& right_img_depth) {
     depths_ = std::vector<float>(num_keypts_, -1);
 
     for (unsigned int idx = 0; idx < num_keypts_; idx++) {
-        const auto& keypt = keypts_.at(idx);
-        const auto& undist_keypt = undist_keypts_.at(idx);
+        auto& keypt = keypts_.at(idx);
+        auto& undist_keypt = undist_keypts_.at(idx);
 
-        const float x = keypt.pt.x;
-        const float y = keypt.pt.y;
+        const float x = keypt.get_cv_keypoint().pt.x;
+        const float y = keypt.get_cv_keypoint().pt.y;
 
         const float depth = right_img_depth.at<float>(y, x);
 
@@ -286,7 +286,7 @@ void frame::compute_stereo_from_depth(const cv::Mat& right_img_depth) {
         }
 
         depths_.at(idx) = depth;
-        stereo_x_right_.at(idx) = undist_keypt.pt.x - camera_->focal_x_baseline_ / depth;
+        stereo_x_right_.at(idx) = undist_keypt.get_cv_keypoint().pt.x - camera_->focal_x_baseline_ / depth;
     }
 }
 } // namespace data

@@ -4,6 +4,7 @@
 #include <list>
 
 #include <opencv2/core/types.hpp>
+#include <openvslam/data/keypoint.h>
 
 namespace openvslam {
 namespace feature {
@@ -17,7 +18,7 @@ public:
     std::array<orb_extractor_node, 4> divide_node();
 
     //! Keypoints which distributed into this node
-    std::vector<cv::KeyPoint> keypts_;
+    data::keypoint_container keypts_;
 
     //! Begin and end of the allocated area on the image
     cv::Point2i pt_begin_, pt_end_;

@@ -12,6 +12,7 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include <openvslam/segmentation/segmentation_config.h>
 
 namespace openvslam {
 
@@ -38,7 +39,11 @@ enum class tracker_state_t {
 
 class tracking_module {
 public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW tracking_module(const std::shared_ptr<config> &cfg, system *system,
+                                                    data::map_database *map_db,
+                                                    data::bow_vocabulary *bow_vocab, data::bow_database *bow_db,
+                                                    const std::shared_ptr<segmentation_config> &seg_cfg);
+
 
     //! Constructor
     tracking_module(const std::shared_ptr<config>& cfg, system* system, data::map_database* map_db,
@@ -70,15 +75,22 @@ public:
 
     //! Track a monocular frame
     //! (NOTE: distorted images are acceptable if calibrated)
-    virtual Mat44_t track_monocular_image(const cv::Mat& img, const double timestamp, const cv::Mat& mask = cv::Mat{});
+    Mat44_t track_monocular_image(const cv::Mat& img, const double timestamp, const cv::Mat& mask = cv::Mat{});
 
     //! Track a stereo frame
     //! (Note: Left and Right images must be stereo-rectified)
-    virtual Mat44_t track_stereo_image(const cv::Mat& left_img_rect, const cv::Mat& right_img_rect, const double timestamp, const cv::Mat& mask = cv::Mat{});
+    Mat44_t track_stereo_image(const cv::Mat& left_img_rect, const cv::Mat& right_img_rect, const double timestamp, const cv::Mat& mask = cv::Mat{});
 
     //! Track an RGBD frame
     //! (Note: RGB and Depth images must be aligned)
-    virtual Mat44_t track_RGBD_image(const cv::Mat& img, const cv::Mat& depthmap, const double timestamp, const cv::Mat& mask = cv::Mat{});
+    Mat44_t track_RGBD_image(const cv::Mat& img, const cv::Mat& depthmap, const double timestamp, const cv::Mat& mask = cv::Mat{});
+
+    Mat44_t track_stereo_image_with_segmentation(const cv::Mat &left_img_rect, const cv::Mat &right_img_rect,
+                                                 const cv::Mat &left_seg_img, const cv::Mat &right_seg_img,
+                                                 const double timestamp, const cv::Mat &mask);
+
+    Mat44_t track_monocular_image_with_segmentation(const cv::Mat &img, const cv::Mat &seg_img, const double timestamp,
+                                                    const cv::Mat &mask);
 
     //-----------------------------------------
     // management for reset process
@@ -101,11 +113,15 @@ public:
     //! Resume the tracking module
     void resume();
 
+    bool is_tracking();
+
     //-----------------------------------------
     // variables
 
     //! config
     const std::shared_ptr<config> cfg_;
+
+    std::shared_ptr<segmentation_config> seg_cfg;
 
     //! camera model (equals to cfg_->camera_)
     camera::base* camera_;
@@ -146,7 +162,7 @@ protected:
     void update_last_frame();
 
     //! Optimize the camera pose of the current frame
-    bool optimize_current_frame_with_local_map();
+    virtual bool optimize_current_frame_with_local_map();
 
     //! Update the local map
     void update_local_map();

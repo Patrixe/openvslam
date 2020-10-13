@@ -1,4 +1,5 @@
 #include "openvslam/camera/fisheye.h"
+#include "openvslam/data/keypoint.h"
 
 #include <iostream>
 
@@ -84,18 +85,17 @@ image_bounds fisheye::compute_image_bounds() const {
         const double pwy = (0.0 - cy_) / fy_;
         const double theta_d = sqrt(pwx * pwx + pwy * pwy);
 
+        // corner coordinates: (x, y) = (col, row)
+        data::keypoint_container corners {  data::keypoint(cv::KeyPoint(0.0, 0.0, 1.0)), // left top
+                                            data::keypoint(cv::KeyPoint(cols_, 0.0, 1.0)),    // right top
+                                            data::keypoint(cv::KeyPoint(0.0, rows_, 1.0)),    // left bottom
+                                            data::keypoint(cv::KeyPoint(cols_, rows_, 1.0))}; // right bottom
+
+        data::keypoint_container undist_corners_container;
+        undistort_keypoints(corners, undist_corners_container);
+        std::vector<cv::KeyPoint> undist_corners = undist_corners_container.get_cv_keypoints();
+
         if (theta_d > M_PI_2) {
-            // fov is super wide (four corners are out of view)
-
-            // corner coordinates: (x, y) = (col, row)
-            const std::vector<cv::KeyPoint> corners{cv::KeyPoint(cx_, 0.0, 1.0),    // top: min_y
-                                                    cv::KeyPoint(cols_, cy_, 1.0),  // right: max_x
-                                                    cv::KeyPoint(0.0, cy_, 1.0),    // left: min_x
-                                                    cv::KeyPoint(cx_, rows_, 1.0)}; // down: max_y
-
-            std::vector<cv::KeyPoint> undist_corners;
-            undistort_keypoints(corners, undist_corners);
-
             // 1. limit image_bounds by incident angle
             //    when deg_thr = 5, only incident angle < 85 deg is accepted
             // 2. deal with over 180 deg fov
@@ -118,16 +118,6 @@ image_bounds fisheye::compute_image_bounds() const {
         }
         else {
             // fov is normal (four corners are inside of view)
-
-            // corner coordinates: (x, y) = (col, row)
-            const std::vector<cv::KeyPoint> corners{cv::KeyPoint(0.0, 0.0, 1.0),      // left top
-                                                    cv::KeyPoint(cols_, 0.0, 1.0),    // right top
-                                                    cv::KeyPoint(0.0, rows_, 1.0),    // left bottom
-                                                    cv::KeyPoint(cols_, rows_, 1.0)}; // right bottom
-
-            std::vector<cv::KeyPoint> undist_corners;
-            undistort_keypoints(corners, undist_corners);
-
             return image_bounds{std::min(undist_corners.at(0).pt.x, undist_corners.at(2).pt.x),
                                 std::max(undist_corners.at(1).pt.x, undist_corners.at(3).pt.x),
                                 std::min(undist_corners.at(0).pt.y, undist_corners.at(1).pt.y),
@@ -136,18 +126,18 @@ image_bounds fisheye::compute_image_bounds() const {
     }
 }
 
-void fisheye::undistort_keypoints(const std::vector<cv::KeyPoint>& dist_keypt, std::vector<cv::KeyPoint>& undist_keypt) const {
+void fisheye::undistort_keypoints(data::keypoint_container& dist_keypts, data::keypoint_container &undist_keypts) const {
     // cv::fisheye::undistortPoints does not accept an empty input
-    if (dist_keypt.empty()) {
-        undist_keypt.clear();
+    if (dist_keypts.empty()) {
+        undist_keypts.clear();
         return;
     }
 
     // fill cv::Mat with distorted keypoints
-    cv::Mat mat(dist_keypt.size(), 2, CV_32F);
-    for (unsigned long idx = 0; idx < dist_keypt.size(); ++idx) {
-        mat.at<float>(idx, 0) = dist_keypt.at(idx).pt.x;
-        mat.at<float>(idx, 1) = dist_keypt.at(idx).pt.y;
+    cv::Mat mat(dist_keypts.size(), 2, CV_32F);
+    for (unsigned long idx = 0; idx < dist_keypts.size(); ++idx) {
+        mat.at<float>(idx, 0) = dist_keypts.at(idx).get_cv_keypoint().pt.x;
+        mat.at<float>(idx, 1) = dist_keypts.at(idx).get_cv_keypoint().pt.y;
     }
 
     // undistort
@@ -156,21 +146,21 @@ void fisheye::undistort_keypoints(const std::vector<cv::KeyPoint>& dist_keypt, s
     mat = mat.reshape(1);
 
     // convert to cv::Mat
-    undist_keypt.resize(dist_keypt.size());
-    for (unsigned long idx = 0; idx < undist_keypt.size(); ++idx) {
-        undist_keypt.at(idx).pt.x = mat.at<float>(idx, 0);
-        undist_keypt.at(idx).pt.y = mat.at<float>(idx, 1);
-        undist_keypt.at(idx).angle = dist_keypt.at(idx).angle;
-        undist_keypt.at(idx).size = dist_keypt.at(idx).size;
-        undist_keypt.at(idx).octave = dist_keypt.at(idx).octave;
+    undist_keypts.resize(dist_keypts.size());
+    for (unsigned long idx = 0; idx < undist_keypts.size(); ++idx) {
+        undist_keypts.at(idx).get_cv_keypoint().pt.x = mat.at<float>(idx, 0);
+        undist_keypts.at(idx).get_cv_keypoint().pt.y = mat.at<float>(idx, 1);
+        undist_keypts.at(idx).get_cv_keypoint().angle = dist_keypts.at(idx).get_cv_keypoint().angle;
+        undist_keypts.at(idx).get_cv_keypoint().size = dist_keypts.at(idx).get_cv_keypoint().size;
+        undist_keypts.at(idx).get_cv_keypoint().octave = dist_keypts.at(idx).get_cv_keypoint().octave;
     }
 }
 
-void fisheye::convert_keypoints_to_bearings(const std::vector<cv::KeyPoint>& undist_keypt, eigen_alloc_vector<Vec3_t>& bearings) const {
+void fisheye::convert_keypoints_to_bearings(data::keypoint_container &undist_keypt, eigen_alloc_vector<Vec3_t>& bearings) const {
     bearings.resize(undist_keypt.size());
     for (unsigned long idx = 0; idx < undist_keypt.size(); ++idx) {
-        const auto x_normalized = (undist_keypt.at(idx).pt.x - cx_) / fx_;
-        const auto y_normalized = (undist_keypt.at(idx).pt.y - cy_) / fy_;
+        const auto x_normalized = (undist_keypt.at(idx).get_cv_keypoint().pt.x - cx_) / fx_;
+        const auto y_normalized = (undist_keypt.at(idx).get_cv_keypoint().pt.y - cy_) / fy_;
         const auto l2_norm = std::sqrt(x_normalized * x_normalized + y_normalized * y_normalized + 1.0);
         bearings.at(idx) = Vec3_t{x_normalized / l2_norm, y_normalized / l2_norm, 1.0 / l2_norm};
     }

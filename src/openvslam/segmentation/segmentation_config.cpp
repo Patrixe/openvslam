@@ -6,8 +6,8 @@
 #include "segmentation_config.h"
 
 static const unsigned int accepted_for_keypoints =
-        (1 << 0) // roads
-        | (1 << 1) // sidewalk
+//        (1 << 0) // roads
+        /*|*/ (1 << 1) // sidewalk
         | (1 << 2) // building
         | (1 << 3) // wall
         | (1 << 4) // fence

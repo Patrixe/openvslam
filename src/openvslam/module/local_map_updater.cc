@@ -5,7 +5,7 @@
 
 namespace openvslam {
 namespace module {
-
+// Computes landmarks and keyframes around the given one, which can be interpreted as a "local map"
 local_map_updater::local_map_updater(const data::frame& curr_frm, const unsigned int max_num_local_keyfrms)
     : frm_id_(curr_frm.id_), frm_lms_(curr_frm.landmarks_), num_keypts_(curr_frm.num_keypts_),
       max_num_local_keyfrms_(max_num_local_keyfrms) {}

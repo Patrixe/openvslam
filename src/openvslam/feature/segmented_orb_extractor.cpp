@@ -24,7 +24,8 @@ namespace openvslam {
         }
 
         void segmented_orb_extractor::compute_fast_keypoints(
-                std::vector<std::vector<cv::KeyPoint>> &all_keypts, const cv::Mat &seg_img, const cv::Mat &mask) {
+                std::vector<data::keypoint_container> &all_keypts,
+                const cv::Mat &seg_img, const cv::Mat &mask) {
             all_keypts.resize(orb_params_.num_levels_);
 
             // An anonymous function which checks mask(image or rectangle)
@@ -52,7 +53,7 @@ namespace openvslam {
                 const unsigned int num_cols = std::ceil(width / cell_size) + 1;
                 const unsigned int num_rows = std::ceil(height / cell_size) + 1;
 
-                std::vector<cv::KeyPoint> keypts_to_distribute;
+                data::keypoint_container keypts_to_distribute;
                 keypts_to_distribute.reserve(orb_params_.max_num_keypts_ * 10);
 
 #ifdef USE_OPENMP
@@ -91,39 +92,39 @@ namespace openvslam {
                         }
 
                         std::vector<cv::KeyPoint> keypts_in_cell;
+                        data::keypoint_container seg_keypts_in_cell;
                         cv::FAST(image_pyramid_.at(level).rowRange(min_y, max_y).colRange(min_x, max_x),
                                  keypts_in_cell, orb_params_.ini_fast_thr_, true);
 
-                        int before = keypts_in_cell.size();
-                        filter_by_segmentation(keypts_in_cell, seg_img, scale_factor, min_x, min_y);
-                        std::cout << "filtered " << before - keypts_in_cell.size() << " at level " << level;
+                        transform_to_keypoint_structure(keypts_in_cell, seg_keypts_in_cell);
+                        apply_segmentation_information(seg_keypts_in_cell, seg_img, scale_factor, min_x, min_y);
 
-                        // Re-compute FAST keypoint with reduced threshold if enough keypoint was not got
+                        // Re-compute FAST keypoint with reduced threshold if not enough key points were found
                         if (keypts_in_cell.empty()) {
                             cv::FAST(image_pyramid_.at(level).rowRange(min_y, max_y).colRange(min_x, max_x),
                                      keypts_in_cell, orb_params_.min_fast_thr, true);
 
-                            int before = keypts_in_cell.size();
-                            filter_by_segmentation(keypts_in_cell, seg_img, scale_factor, min_x, min_y);
-                            std::cout << "filtered late" << before - keypts_in_cell.size() << " at level " << level;
-                        }
-                        std::cout  << "\n";
+                            if (keypts_in_cell.empty()) {
+                                continue;
+                            }
 
-                        if (keypts_in_cell.empty()) {
-                            continue;
+                            transform_to_keypoint_structure(keypts_in_cell, seg_keypts_in_cell);
+                            apply_segmentation_information(seg_keypts_in_cell, seg_img, scale_factor, min_x, min_y);
                         }
+
 
                         // Collect keypoints for every scale
 #ifdef USE_OPENMP
 #pragma omp critical
 #endif
                         {
-                            for (auto &keypt : keypts_in_cell) {
-                                keypt.pt.x += j * cell_size;
-                                keypt.pt.y += i * cell_size;
+                            for (auto &keypt : seg_keypts_in_cell) {
+                                keypt.get_cv_keypoint().pt.x += j * cell_size;
+                                keypt.get_cv_keypoint().pt.y += i * cell_size;
                                 // Check if the keypoint is in the mask
                                 if (!mask.empty() &&
-                                    is_in_mask(min_border_y + keypt.pt.y, min_border_x + keypt.pt.x, scale_factor)) {
+                                    is_in_mask(min_border_y + keypt.get_cv_keypoint().pt.y,
+                                               min_border_x + keypt.get_cv_keypoint().pt.x, scale_factor)) {
                                     continue;
                                 }
                                 keypts_to_distribute.push_back(keypt);
@@ -132,7 +133,7 @@ namespace openvslam {
                     }
                 }
 
-                std::vector<cv::KeyPoint> &keypts_at_level = all_keypts.at(level);
+                data::keypoint_container &keypts_at_level = all_keypts.at(level);
                 keypts_at_level.reserve(orb_params_.max_num_keypts_);
 
                 // Distribute keypoints via tree
@@ -145,24 +146,25 @@ namespace openvslam {
 
                 for (auto &keypt : keypts_at_level) {
                     // Translation correction (scale will be corrected after ORB description)
-                    keypt.pt.x += min_border_x;
-                    keypt.pt.y += min_border_y;
+                    keypt.get_cv_keypoint().pt.x += min_border_x;
+                    keypt.get_cv_keypoint().pt.y += min_border_y;
                     // Set the other information
-                    keypt.octave = level;
-                    keypt.size = scaled_patch_size;
+                    keypt.get_cv_keypoint().octave = level;
+                    keypt.get_cv_keypoint().size = scaled_patch_size;
                 }
             }
 
             // Compute orientations
             for (unsigned int level = 0; level < orb_params_.num_levels_; ++level) {
-                compute_orientation(image_pyramid_.at(level), all_keypts.at(level));
+                compute_orientation(image_pyramid_.at(level), all_keypts.at(level).get_cv_keypoints());
             }
 
             std::cout << "\n\n";
         }
 
         void segmented_orb_extractor::extract(const cv::_InputArray &in_image, const cv::Mat &seg_img,
-                                              const cv::_InputArray &in_image_mask, std::vector<cv::KeyPoint> &keypts,
+                                              const cv::_InputArray &in_image_mask,
+                                              data::keypoint_container &keypts,
                                               const cv::_OutputArray &out_descriptors) {
             if (in_image.empty()) {
                 return;
@@ -181,7 +183,7 @@ namespace openvslam {
                 mask_is_initialized_ = true;
             }
 
-            std::vector<std::vector<cv::KeyPoint>> all_keypts;
+            std::vector<data::keypoint_container> all_keypts;
 
             // select mask to use
             if (!in_image_mask.empty()) {
@@ -200,6 +202,7 @@ namespace openvslam {
 
             cv::Mat descriptors;
 
+            // TODO pali: num_keypts is currently based on all segmentation nodes, can be limited to only applicable nodes
             unsigned int num_keypts = 0;
             for (unsigned int level = 0; level < orb_params_.num_levels_; ++level) {
                 num_keypts += all_keypts.at(level).size();
@@ -214,8 +217,10 @@ namespace openvslam {
             keypts.clear();
             keypts.reserve(num_keypts);
 
+            // TODO pali: filter descriptors (?) based on seg infos, check if keypoints are sufficient to display and evaluate feature information
             unsigned int offset = 0;
             for (unsigned int level = 0; level < orb_params_.num_levels_; ++level) {
+
                 auto &keypts_at_level = all_keypts.at(level);
                 const auto num_keypts_at_level = keypts_at_level.size();
 
@@ -226,27 +231,114 @@ namespace openvslam {
                 cv::Mat blurred_image = image_pyramid_.at(level).clone();
                 cv::GaussianBlur(blurred_image, blurred_image, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
                 cv::Mat descriptors_at_level = descriptors.rowRange(offset, offset + num_keypts_at_level);
-                compute_orb_descriptors(blurred_image, keypts_at_level, descriptors_at_level);
+                compute_orb_descriptors(blurred_image, keypts_at_level.get_cv_keypoints(), descriptors_at_level);
 
                 offset += num_keypts_at_level;
 
-                correct_keypoint_scale(keypts_at_level, level);
+                correct_keypoint_scale(keypts_at_level.get_cv_keypoints(), level);
 
                 keypts.insert(keypts.end(), keypts_at_level.begin(), keypts_at_level.end());
             }
         }
 
-        void segmented_orb_extractor::filter_by_segmentation(std::vector<cv::KeyPoint> &keypts_in_cell,
-                                                             const cv::Mat &segmentation_information,
-                                                             float scale_factor,
-                                                             int offset_x, int offset_y) {
-            auto seg_filter = [segmentation_information, scale_factor, offset_x, offset_y, this](cv::KeyPoint &kp) {
-                return !this->seg_cfg->allowed_for_landmark(
-                        segmentation_information.at<uchar>((kp.pt.y + offset_y) * scale_factor, (kp.pt.x + offset_x) * scale_factor));
-            };
+        void segmented_orb_extractor::transform_to_keypoint_structure(std::vector<cv::KeyPoint> &keypts_in_cell,
+                                                                      data::keypoint_container &seg_keypts_in_cell) {
+            for (auto &point : keypts_in_cell) {
+                seg_keypts_in_cell.push_back(data::keypoint(point));
+            }
+        }
 
-            keypts_in_cell.erase(std::remove_if(keypts_in_cell.begin(), keypts_in_cell.end(), seg_filter),
-                                 keypts_in_cell.end());
+        data::keypoint_container segmented_orb_extractor::distribute_keypoints_via_tree(
+                const data::keypoint_container &keypts_to_distribute,
+                const int min_x, const int max_x, const int min_y, const int max_y,
+                const unsigned int num_keypts) const {
+            auto nodes = initialize_nodes(keypts_to_distribute, min_x, max_x, min_y, max_y);
+
+            // Forkable leaf nodes list
+            // The pool is used when a forking makes nodes more than a limited number
+            std::vector<std::pair<int, orb_extractor_node *>> leaf_nodes_pool;
+            leaf_nodes_pool.reserve(nodes.size() * 10);
+
+            // A flag denotes if enough keypoints have been distributed
+            bool is_filled = false;
+
+            while (true) {
+                const unsigned int prev_size = nodes.size();
+
+                auto iter = nodes.begin();
+                leaf_nodes_pool.clear();
+
+                // Fork node and remove the old one from nodes
+                while (iter != nodes.end()) {
+                    if (iter->is_leaf_node_) {
+                        iter++;
+                        continue;
+                    }
+
+                    // Divide node and assign to the leaf node pool
+                    const auto child_nodes = iter->divide_node();
+                    assign_child_nodes(child_nodes, nodes, leaf_nodes_pool);
+                    // Remove the old node
+                    iter = nodes.erase(iter);
+                }
+
+                // Stop iteration when the number of nodes is over the designated size or new node is not generated
+                if (num_keypts <= nodes.size() || nodes.size() == prev_size) {
+                    is_filled = true;
+                    break;
+                }
+
+                // If all nodes number is more than limit, keeping nodes are selected by next step
+                if (num_keypts < nodes.size() + leaf_nodes_pool.size()) {
+                    is_filled = false;
+                    break;
+                }
+            }
+
+            while (!is_filled) {
+                // Select nodes so that keypoint number is just same as designeted number
+                const unsigned int prev_size = nodes.size();
+
+                auto prev_leaf_nodes_pool = leaf_nodes_pool;
+                leaf_nodes_pool.clear();
+
+                // Sort by number of keypoints in the patch of each leaf node
+                std::sort(prev_leaf_nodes_pool.rbegin(), prev_leaf_nodes_pool.rend());
+                // Do processes from the node which has much more keypoints
+                for (const auto &prev_leaf_node : prev_leaf_nodes_pool) {
+                    // Divide node and assign to the leaf node pool
+                    const auto child_nodes = prev_leaf_node.second->divide_node();
+                    assign_child_nodes(child_nodes, nodes, leaf_nodes_pool);
+                    // Remove the old node
+                    nodes.erase(prev_leaf_node.second->iter_);
+
+                    if (num_keypts <= nodes.size()) {
+                        is_filled = true;
+                        break;
+                    }
+                }
+
+                // Stop dividing if the number of nodes is reached to the limit or there are no dividable nodes
+                if (is_filled || num_keypts <= nodes.size() || nodes.size() == prev_size) {
+                    is_filled = true;
+                    break;
+                }
+            }
+
+            return find_keypoints_with_max_response(nodes);
+        }
+
+        void segmented_orb_extractor::apply_segmentation_information(data::keypoint_container &keypts_in_cell,
+                                                                        const cv::Mat &segmentation_information,
+                                                                        float scale_factor,
+                int offset_x, int offset_y) {
+            for (auto &keypoint : keypts_in_cell) {
+                if (!this->seg_cfg->allowed_for_landmark(
+                        segmentation_information.at<uchar>((keypoint.get_cv_keypoint().pt.y + offset_y) * scale_factor,
+                                                           (keypoint.get_cv_keypoint().pt.x + offset_x) * scale_factor))) {
+                    keypoint.set_applicable_for_slam(true);
+                }
+            }
         }
     }
 }

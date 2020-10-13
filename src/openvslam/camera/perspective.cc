@@ -1,5 +1,5 @@
 #include "openvslam/camera/perspective.h"
-
+#include "openvslam/data/keypoint.h"
 #include <iostream>
 
 #include <spdlog/spdlog.h>
@@ -81,13 +81,14 @@ image_bounds perspective::compute_image_bounds() const {
         // distortion exists
 
         // corner coordinates: (x, y) = (col, row)
-        const std::vector<cv::KeyPoint> corners{cv::KeyPoint(0.0, 0.0, 1.0),      // left top
-                                                cv::KeyPoint(cols_, 0.0, 1.0),    // right top
-                                                cv::KeyPoint(0.0, rows_, 1.0),    // left bottom
-                                                cv::KeyPoint(cols_, rows_, 1.0)}; // right bottom
+        data::keypoint_container corners {  data::keypoint(cv::KeyPoint(0.0, 0.0, 1.0)), // left top
+                                            data::keypoint(cv::KeyPoint(cols_, 0.0, 1.0)),    // right top
+                                            data::keypoint(cv::KeyPoint(0.0, rows_, 1.0)),    // left bottom
+                                            data::keypoint(cv::KeyPoint(cols_, rows_, 1.0))}; // right bottom
 
-        std::vector<cv::KeyPoint> undist_corners;
-        undistort_keypoints(corners, undist_corners);
+        data::keypoint_container corner_keypoints;
+        undistort_keypoints(corners, corner_keypoints);
+        std::vector<cv::KeyPoint> undist_corners = corner_keypoints.get_cv_keypoints();
 
         return image_bounds{std::min(undist_corners.at(0).pt.x, undist_corners.at(2).pt.x),
                             std::max(undist_corners.at(1).pt.x, undist_corners.at(3).pt.x),
@@ -96,7 +97,7 @@ image_bounds perspective::compute_image_bounds() const {
     }
 }
 
-void perspective::undistort_keypoints(const std::vector<cv::KeyPoint>& dist_keypts, std::vector<cv::KeyPoint>& undist_keypts) const {
+void perspective::undistort_keypoints(data::keypoint_container &dist_keypts, data::keypoint_container &undist_keypts) const {
     // cv::undistortPoints does not accept an empty input
     if (dist_keypts.empty()) {
         undist_keypts.clear();
@@ -106,8 +107,8 @@ void perspective::undistort_keypoints(const std::vector<cv::KeyPoint>& dist_keyp
     // fill cv::Mat with distorted keypoints
     cv::Mat mat(dist_keypts.size(), 2, CV_32F);
     for (unsigned long idx = 0; idx < dist_keypts.size(); ++idx) {
-        mat.at<float>(idx, 0) = dist_keypts.at(idx).pt.x;
-        mat.at<float>(idx, 1) = dist_keypts.at(idx).pt.y;
+        mat.at<float>(idx, 0) = dist_keypts.at(idx).get_cv_keypoint().pt.x;
+        mat.at<float>(idx, 1) = dist_keypts.at(idx).get_cv_keypoint().pt.y;
     }
 
     // undistort
@@ -119,19 +120,19 @@ void perspective::undistort_keypoints(const std::vector<cv::KeyPoint>& dist_keyp
     // convert to cv::Mat
     undist_keypts.resize(dist_keypts.size());
     for (unsigned long idx = 0; idx < undist_keypts.size(); ++idx) {
-        undist_keypts.at(idx).pt.x = mat.at<float>(idx, 0);
-        undist_keypts.at(idx).pt.y = mat.at<float>(idx, 1);
-        undist_keypts.at(idx).angle = dist_keypts.at(idx).angle;
-        undist_keypts.at(idx).size = dist_keypts.at(idx).size;
-        undist_keypts.at(idx).octave = dist_keypts.at(idx).octave;
+        undist_keypts.at(idx).get_cv_keypoint().pt.x = mat.at<float>(idx, 0);
+        undist_keypts.at(idx).get_cv_keypoint().pt.y = mat.at<float>(idx, 1);
+        undist_keypts.at(idx).get_cv_keypoint().angle = dist_keypts.at(idx).get_cv_keypoint().angle;
+        undist_keypts.at(idx).get_cv_keypoint().size = dist_keypts.at(idx).get_cv_keypoint().size;
+        undist_keypts.at(idx).get_cv_keypoint().octave = dist_keypts.at(idx).get_cv_keypoint().octave;
     }
 }
 
-void perspective::convert_keypoints_to_bearings(const std::vector<cv::KeyPoint>& undist_keypts, eigen_alloc_vector<Vec3_t>& bearings) const {
+void perspective::convert_keypoints_to_bearings(data::keypoint_container &undist_keypts, eigen_alloc_vector<Vec3_t>& bearings) const {
     bearings.resize(undist_keypts.size());
     for (unsigned long idx = 0; idx < undist_keypts.size(); ++idx) {
-        const auto x_normalized = (undist_keypts.at(idx).pt.x - cx_) / fx_;
-        const auto y_normalized = (undist_keypts.at(idx).pt.y - cy_) / fy_;
+        const auto x_normalized = (undist_keypts.at(idx).get_cv_keypoint().pt.x - cx_) / fx_;
+        const auto y_normalized = (undist_keypts.at(idx).get_cv_keypoint().pt.y - cy_) / fy_;
         const auto l2_norm = std::sqrt(x_normalized * x_normalized + y_normalized * y_normalized + 1.0);
         bearings.at(idx) = Vec3_t{x_normalized / l2_norm, y_normalized / l2_norm, 1.0 / l2_norm};
     }

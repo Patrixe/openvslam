@@ -1,4 +1,5 @@
 #include "openvslam/data/common.h"
+#include "openvslam/data/keypoint.h"
 
 #include <nlohmann/json.hpp>
 
@@ -124,7 +125,7 @@ auto assign_keypoints_to_grid(camera::base* camera, const std::vector<cv::KeyPoi
     return keypt_indices_in_cells;
 }
 
-std::vector<unsigned int> get_keypoints_in_cell(camera::base* camera, const std::vector<cv::KeyPoint>& undist_keypts,
+std::vector<unsigned int> get_keypoints_in_cell(camera::base* camera, const keypoint_container &undist_keypts,
                                                 const std::vector<std::vector<std::vector<unsigned int>>>& keypt_indices_in_cells,
                                                 const float ref_x, const float ref_y, const float margin,
                                                 const int min_level, const int max_level) {
@@ -164,16 +165,16 @@ std::vector<unsigned int> get_keypoints_in_cell(camera::base* camera, const std:
                 const auto& undist_keypt = undist_keypts.at(idx);
 
                 if (check_level) {
-                    if (undist_keypt.octave < min_level) {
+                    if (undist_keypt.get_cv_keypoint().octave < min_level) {
                         continue;
                     }
-                    if (0 <= max_level && max_level < undist_keypt.octave) {
+                    if (0 <= max_level && max_level < undist_keypt.get_cv_keypoint().octave) {
                         continue;
                     }
                 }
 
-                const float dist_x = undist_keypt.pt.x - ref_x;
-                const float dist_y = undist_keypt.pt.y - ref_y;
+                const float dist_x = undist_keypt.get_cv_keypoint().pt.x - ref_x;
+                const float dist_y = undist_keypt.get_cv_keypoint().pt.y - ref_y;
 
                 if (std::abs(dist_x) < margin && std::abs(dist_y) < margin) {
                     indices.push_back(idx);

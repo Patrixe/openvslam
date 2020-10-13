@@ -1,4 +1,5 @@
 #include "openvslam/camera/equirectangular.h"
+#include "openvslam/data/keypoint.h"
 
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
@@ -38,16 +39,16 @@ image_bounds equirectangular::compute_image_bounds() const {
     return image_bounds{0.0, cols_, 0.0, rows_};
 }
 
-void equirectangular::undistort_keypoints(const std::vector<cv::KeyPoint>& dist_keypts, std::vector<cv::KeyPoint>& undist_keypts) const {
+void equirectangular::undistort_keypoints(data::keypoint_container &dist_keypts, data::keypoint_container &undist_keypts) const {
     undist_keypts = dist_keypts;
 }
 
-void equirectangular::convert_keypoints_to_bearings(const std::vector<cv::KeyPoint>& undist_keypts, eigen_alloc_vector<Vec3_t>& bearings) const {
+void equirectangular::convert_keypoints_to_bearings(data::keypoint_container &undist_keypts, eigen_alloc_vector<Vec3_t>& bearings) const {
     bearings.resize(undist_keypts.size());
     for (unsigned int idx = 0; idx < undist_keypts.size(); ++idx) {
         // convert to unit polar coordinates
-        const double lon = (undist_keypts.at(idx).pt.x / cols_ - 0.5) * (2 * M_PI);
-        const double lat = -(undist_keypts.at(idx).pt.y / rows_ - 0.5) * M_PI;
+        const double lon = (undist_keypts.at(idx).get_cv_keypoint().pt.x / cols_ - 0.5) * (2 * M_PI);
+        const double lat = -(undist_keypts.at(idx).get_cv_keypoint().pt.y / rows_ - 0.5) * M_PI;
         // convert to equirectangular coordinates
         bearings.at(idx)(0) = std::cos(lat) * std::sin(lon);
         bearings.at(idx)(1) = -std::sin(lat);

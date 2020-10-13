@@ -5,9 +5,8 @@
 #ifndef OPENVSLAM_SEGMENTATION_SYSTEM_H
 #define OPENVSLAM_SEGMENTATION_SYSTEM_H
 
-#include "system.h"
+#include "openvslam/system.h"
 #include "segmentation_config.h"
-#include "segmentation_tracking_module.h"
 #include <spdlog/spdlog.h>
 
 namespace openvslam {
@@ -34,7 +33,7 @@ namespace openvslam {
     namespace publish {
         class map_publisher;
 
-        class frame_publisher;
+        class segmentation_frame_publisher;
     } // namespace publish
 
     class segmentation_system : public system {
@@ -44,10 +43,13 @@ namespace openvslam {
                             std::shared_ptr<segmentation_config> seg_cfg);
 
         Mat44_t
-        feed_monocular_frame(const cv::Mat &img, const cv::Mat &seg_img, const double timestamp, const cv::Mat &mask);
+        feed_monocular_frame(const cv::Mat &img, const cv::Mat &seg_img, double timestamp, const cv::Mat &mask);
 
         Mat44_t feed_stereo_frame(const cv::Mat &left_img, const cv::Mat &right_img, const cv::Mat &left_seg_img,
                                   const cv::Mat &right_seg_img, const double timestamp, const cv::Mat &mask);
+
+    protected:
+        tracking_module* tracker_;
     };
 }
 

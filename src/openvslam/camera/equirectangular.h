@@ -23,7 +23,7 @@ public:
         return distorted;
     }
 
-    void undistort_keypoints(const std::vector<cv::KeyPoint>& dist_keypts, std::vector<cv::KeyPoint>& undist_keypts) const override final;
+    void undistort_keypoints(data::keypoint_container &dist_keypts, data::keypoint_container &undist_keypts) const override final;
 
     Vec3_t convert_keypoint_to_bearing(const cv::KeyPoint& undist_keypt) const override final {
         // "From Google Street View to 3D City Models (ICCVW 2009)"
@@ -41,7 +41,7 @@ public:
         return bearing;
     }
 
-    void convert_keypoints_to_bearings(const std::vector<cv::KeyPoint>& undist_keypts, eigen_alloc_vector<Vec3_t>& bearings) const override final;
+    void convert_keypoints_to_bearings(data::keypoint_container &undist_keypts, eigen_alloc_vector<Vec3_t>& bearings) const override final;
 
     cv::KeyPoint convert_bearing_to_keypoint(const Vec3_t& bearing) const override final {
         cv::KeyPoint undistorted;

@@ -75,7 +75,7 @@ inline bool get_cell_indices(camera::base* camera, const cv::KeyPoint& keypt, in
  * @param max_level
  * @return
  */
-std::vector<unsigned int> get_keypoints_in_cell(camera::base* camera, const std::vector<cv::KeyPoint>& undist_keypts,
+std::vector<unsigned int> get_keypoints_in_cell(camera::base* camera, const keypoint_container &undist_keypts,
                                                 const std::vector<std::vector<std::vector<unsigned int>>>& keypt_indices_in_cells,
                                                 const float ref_x, const float ref_y, const float margin,
                                                 const int min_level = -1, const int max_level = -1);

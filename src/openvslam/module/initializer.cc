@@ -14,8 +14,8 @@ namespace openvslam {
 namespace module {
 
 initializer::initializer(const camera::setup_type_t setup_type,
-                         data::map_database* map_db, data::bow_database* bow_db,
-                         const YAML::Node& yaml_node)
+                                      data::map_database* map_db, data::bow_database* bow_db,
+                                      const YAML::Node& yaml_node)
     : setup_type_(setup_type), map_db_(map_db), bow_db_(bow_db),
       num_ransac_iters_(yaml_node["Initializer.num_ransac_iterations"].as<unsigned int>(100)),
       min_num_triangulated_(yaml_node["Initializer.num_min_triangulated_pts"].as<unsigned int>(50)),

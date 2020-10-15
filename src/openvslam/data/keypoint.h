@@ -15,6 +15,8 @@ namespace openvslam {
 
             explicit keypoint(cv::KeyPoint kPoint) : cvKeyPoint(std::move(kPoint)) {};
 
+            keypoint() = default;
+
             keypoint(const keypoint &kp) = default;
 
 //            void operator=(const cv::KeyPoint& kp) {
@@ -46,17 +48,18 @@ namespace openvslam {
         class keypoint_container : public std::vector<keypoint> {
             using std::vector<keypoint>::vector;
         public:
-            std::vector<cv::KeyPoint> cv_keypoints = std::vector<cv::KeyPoint>();
-
-            std::vector<cv::KeyPoint>& get_cv_keypoints() {
-                cv_keypoints.clear();
-                cv_keypoints.reserve(this->size());
-
-                for(keypoint& keypoint_data : *this) {
-                    cv_keypoints.emplace_back(keypoint_data.get_cv_keypoint());
+            /**
+             * This is intended for read only access. Adding a new keypoint will not change the keypoint_container
+             * @return
+             */
+            std::vector<cv::KeyPoint> get_all_cv_keypoints() const {
+                std::vector<cv::KeyPoint> keypoints;
+                keypoints.reserve(this->size());
+                for (auto& keypoint : *this) {
+                    keypoints.emplace_back(keypoint.get_cv_keypoint());
                 }
 
-                return cv_keypoints;
+                return keypoints;
             }
         };
     }

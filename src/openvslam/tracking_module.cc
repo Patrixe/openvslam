@@ -102,7 +102,7 @@ namespace openvslam {
         return mapping_is_enabled_;
     }
 
-    std::vector<cv::KeyPoint> tracking_module::get_initial_keypoints() const {
+    data::keypoint_container tracking_module::get_initial_keypoints() const {
         return initializer_.get_initial_keypoints();
     }
 
@@ -433,12 +433,8 @@ namespace openvslam {
         search_local_landmarks();
 
         // optimize the pose
-        spdlog::info("Test");
         Mat44_t &camera_pose_before = curr_frm_.cam_pose_cw_;
         pose_optimizer_.optimize(curr_frm_);
-        if (camera_pose_before != curr_frm_.cam_pose_cw_) {
-            spdlog::info("It actually changed. Woooow");
-        }
 
         // count up the number of tracked landmarks
         num_tracked_lms_ = 0;

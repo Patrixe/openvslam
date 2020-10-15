@@ -1,4 +1,5 @@
 #include "openvslam/data/keyframe.h"
+#include "openvslam/data/keypoint.h"
 #include "openvslam/module/two_view_triangulator.h"
 #include "openvslam/solve/triangulator.h"
 
@@ -70,17 +71,17 @@ bool two_view_triangulator::triangulate(const unsigned idx_1, const unsigned int
     }
 
     // reject the point if reprojection errors are larger than reasonable threshold
-    if (!check_reprojection_error(pos_w, rot_1w_, trans_1w_, camera_1_, keypt_1.pt, keypt_1_x_right,
-                                  keyfrm_1_->level_sigma_sq_.at(keypt_1.octave), is_stereo_1)
-        || !check_reprojection_error(pos_w, rot_2w_, trans_2w_, camera_2_, keypt_2.pt, keypt_2_x_right,
-                                     keyfrm_2_->level_sigma_sq_.at(keypt_2.octave), is_stereo_2)) {
+    if (!check_reprojection_error(pos_w, rot_1w_, trans_1w_, camera_1_, keypt_1.get_cv_keypoint().pt, keypt_1_x_right,
+                                  keyfrm_1_->level_sigma_sq_.at(keypt_1.get_cv_keypoint().octave), is_stereo_1)
+        || !check_reprojection_error(pos_w, rot_2w_, trans_2w_, camera_2_, keypt_2.get_cv_keypoint().pt, keypt_2_x_right,
+                                     keyfrm_2_->level_sigma_sq_.at(keypt_2.get_cv_keypoint().octave), is_stereo_2)) {
         return false;
     }
 
     // reject the point if the real scale factor and the predicted one are much different
     if (!check_scale_factors(pos_w,
-                             keyfrm_1_->scale_factors_.at(keypt_1.octave),
-                             keyfrm_2_->scale_factors_.at(keypt_2.octave))) {
+                             keyfrm_1_->scale_factors_.at(keypt_1.get_cv_keypoint().octave),
+                             keyfrm_2_->scale_factors_.at(keypt_2.get_cv_keypoint().octave))) {
         return false;
     }
 

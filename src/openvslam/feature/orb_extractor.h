@@ -108,10 +108,10 @@ protected:
     data::keypoint_container find_keypoints_with_max_response(std::list<orb_extractor_node>& nodes) const;
 
     //! Compute orientation for each keypoint
-    void compute_orientation(const cv::Mat& image, std::vector<cv::KeyPoint>& keypts) const;
+    void compute_orientation(const cv::Mat& image, data::keypoint_container &keypts) const;
 
     //! Correct keypoint's position to comply with the scale
-    void correct_keypoint_scale(std::vector<cv::KeyPoint>& keypts_at_level, unsigned int level) const;
+    void correct_keypoint_scale(data::keypoint_container& keypts_at_level, unsigned int level) const;
 
     //! Compute the gradient direction of pixel intensity in a circle around the point
     float ic_angle(const cv::Mat& image, const cv::Point2f& point) const;
@@ -120,7 +120,7 @@ protected:
     void compute_orb_descriptors(const cv::Mat& image, const std::vector<cv::KeyPoint>& keypts, cv::Mat& descriptors) const;
 
     //! Compute orb descriptor of a keypoint
-    void compute_orb_descriptor(const cv::KeyPoint& keypt, const cv::Mat& image, uchar* desc) const;
+    static void compute_orb_descriptor(const cv::KeyPoint& keypt, const cv::Mat& image, uchar* desc) ;
 
     //! parameters for ORB extraction
     orb_params orb_params_;

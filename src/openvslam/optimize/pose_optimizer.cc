@@ -1,4 +1,5 @@
 #include "openvslam/data/frame.h"
+#include "openvslam/data/keypoint.h"
 #include "openvslam/data/landmark.h"
 #include "openvslam/optimize/pose_optimizer.h"
 #include "openvslam/optimize/g2o/se3/pose_opt_edge_wrapper.h"
@@ -74,12 +75,12 @@ unsigned int pose_optimizer::optimize(data::frame& frm) const {
         // frameのvertexをreprojection edgeで接続する
         const auto& undist_keypt = frm.undist_keypts_.at(idx);
         const float x_right = frm.stereo_x_right_.at(idx);
-        const float inv_sigma_sq = frm.inv_level_sigma_sq_.at(undist_keypt.octave);
+        const float inv_sigma_sq = frm.inv_level_sigma_sq_.at(undist_keypt.get_cv_keypoint().octave);
         const auto sqrt_chi_sq = (frm.camera_->setup_type_ == camera::setup_type_t::Monocular)
                                      ? sqrt_chi_sq_2D
                                      : sqrt_chi_sq_3D;
         auto pose_opt_edge_wrap = pose_opt_edge_wrapper(&frm, frm_vtx, lm->get_pos_in_world(),
-                                                        idx, undist_keypt.pt.x, undist_keypt.pt.y, x_right,
+                                                        idx, undist_keypt.get_cv_keypoint().pt.x, undist_keypt.get_cv_keypoint().pt.y, x_right,
                                                         inv_sigma_sq, sqrt_chi_sq);
         pose_opt_edge_wraps.push_back(pose_opt_edge_wrap);
         optimizer.addEdge(pose_opt_edge_wrap.edge_);

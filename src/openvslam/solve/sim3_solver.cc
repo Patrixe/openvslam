@@ -65,8 +65,8 @@ sim3_solver::sim3_solver(data::keyframe* keyfrm_1, data::keyframe* keyfrm_2,
         const auto& keypt_1 = keyfrm_1_->undist_keypts_.at(idx1);
         const auto& keypt_2 = keyfrm_2_->undist_keypts_.at(idx2);
 
-        const float sigma_sq_1 = keyfrm_1_->level_sigma_sq_.at(keypt_1.octave);
-        const float sigma_sq_2 = keyfrm_2_->level_sigma_sq_.at(keypt_2.octave);
+        const float sigma_sq_1 = keyfrm_1_->level_sigma_sq_.at(keypt_1.get_cv_keypoint().octave);
+        const float sigma_sq_2 = keyfrm_2_->level_sigma_sq_.at(keypt_2.get_cv_keypoint().octave);
 
         chi_sq_x_sigma_sq_1_.push_back(chi_sq_2D * sigma_sq_1);
         chi_sq_x_sigma_sq_2_.push_back(chi_sq_2D * sigma_sq_2);

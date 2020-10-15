@@ -54,7 +54,7 @@ frame::frame(const cv::Mat& img_gray, const double timestamp,
     outlier_flags_ = std::vector<bool>(num_keypts_, false);
 
     // Assign all the keypoints into grid
-    assign_keypoints_to_grid(camera_, undist_keypts_.get_cv_keypoints(), keypt_indices_in_cells_);
+    assign_keypoints_to_grid(camera_, undist_keypts_.get_all_cv_keypoints(), keypt_indices_in_cells_);
 }
 
 frame::frame(const cv::Mat& left_img_gray, const cv::Mat& right_img_gray, const double timestamp,
@@ -81,7 +81,7 @@ frame::frame(const cv::Mat& left_img_gray, const cv::Mat& right_img_gray, const 
 
     // Estimate depth with stereo match
     match::stereo stereo_matcher(extractor_left->image_pyramid_, extractor_right_->image_pyramid_,
-                                 keypts_.get_cv_keypoints(), keypts_right_.get_cv_keypoints(), descriptors_, descriptors_right_,
+                                 keypts_.get_all_cv_keypoints(), keypts_right_.get_all_cv_keypoints(), descriptors_, descriptors_right_,
                                  scale_factors_, inv_scale_factors_,
                                  camera->focal_x_baseline_, camera_->true_baseline_);
     stereo_matcher.compute(stereo_x_right_, depths_);
@@ -94,7 +94,7 @@ frame::frame(const cv::Mat& left_img_gray, const cv::Mat& right_img_gray, const 
     outlier_flags_ = std::vector<bool>(num_keypts_, false);
 
     // Assign all the keypoints into grid
-    assign_keypoints_to_grid(camera_, undist_keypts_.get_cv_keypoints(), keypt_indices_in_cells_);
+    assign_keypoints_to_grid(camera_, undist_keypts_.get_all_cv_keypoints(), keypt_indices_in_cells_);
 }
 
 frame::frame(const cv::Mat& img_gray, const cv::Mat& img_depth, const double timestamp,
@@ -127,7 +127,7 @@ frame::frame(const cv::Mat& img_gray, const cv::Mat& img_depth, const double tim
     outlier_flags_ = std::vector<bool>(num_keypts_, false);
 
     // Assign all the keypoints into grid
-    assign_keypoints_to_grid(camera_, undist_keypts_.get_cv_keypoints(), keypt_indices_in_cells_);
+    assign_keypoints_to_grid(camera_, undist_keypts_.get_all_cv_keypoints(), keypt_indices_in_cells_);
 }
 
 void frame::set_cam_pose(const Mat44_t& cam_pose_cw) {

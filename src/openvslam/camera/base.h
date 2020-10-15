@@ -169,7 +169,7 @@ namespace openvslam {
             virtual Vec3_t convert_keypoint_to_bearing(const cv::KeyPoint &undist_keypt) const = 0;
 
             //! Convert undistorted keypoints to bearing vectors
-            virtual void convert_keypoints_to_bearings(data::keypoint_container &undist_keypts,
+            virtual void convert_keypoints_to_bearings(const data::keypoint_container &undist_keypts,
                                                        eigen_alloc_vector<Vec3_t> &bearings) const = 0;
 
             //! Convert bearing vector to undistorted keypoint

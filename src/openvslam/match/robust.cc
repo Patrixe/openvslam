@@ -1,6 +1,7 @@
 #include "openvslam/camera/base.h"
 #include "openvslam/data/frame.h"
 #include "openvslam/data/keyframe.h"
+#include "openvslam/data/keypoint.h"
 #include "openvslam/data/landmark.h"
 #include "openvslam/match/robust.h"
 #include "openvslam/match/angle_checker.h"
@@ -117,7 +118,7 @@ unsigned int robust::match_for_triangulation(data::keyframe* keyfrm_1, data::key
 
                     // E行列による整合性チェック
                     const bool is_inlier = check_epipolar_constraint(bearing_1, bearing_2, E_12,
-                                                                     keyfrm_1->scale_factors_.at(keypt_1.octave));
+                                                                     keyfrm_1->scale_factors_.at(keypt_1.get_cv_keypoint().octave));
                     if (is_inlier) {
                         best_idx_2 = idx_2;
                         best_hamm_dist = hamm_dist;
@@ -134,7 +135,7 @@ unsigned int robust::match_for_triangulation(data::keyframe* keyfrm_1, data::key
 
                 if (check_orientation_) {
                     const auto delta_angle
-                        = keypt_1.angle - keyfrm_2->undist_keypts_.at(best_idx_2).angle;
+                        = keypt_1.get_cv_keypoint().angle - keyfrm_2->undist_keypts_.at(best_idx_2).get_cv_keypoint().angle;
                     angle_checker.append_delta_angle(delta_angle, idx_1);
                 }
             }
@@ -286,7 +287,7 @@ unsigned int robust::brute_force_match(data::frame& frm, data::keyframe* keyfrm,
 
         if (check_orientation_) {
             const auto delta_angle
-                = keypts_1.at(best_idx_1).angle - keypts_2.at(idx_2).angle;
+                = keypts_1.at(best_idx_1).get_cv_keypoint().angle - keypts_2.at(idx_2).get_cv_keypoint().angle;
             angle_checker.append_delta_angle(delta_angle, best_idx_1);
         }
 

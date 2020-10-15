@@ -47,9 +47,6 @@ namespace openvslam {
 
         Mat44_t feed_stereo_frame(const cv::Mat &left_img, const cv::Mat &right_img, const cv::Mat &left_seg_img,
                                   const cv::Mat &right_seg_img, const double timestamp, const cv::Mat &mask);
-
-    protected:
-        tracking_module* tracker_;
     };
 }
 

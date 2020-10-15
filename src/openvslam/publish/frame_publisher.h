@@ -25,7 +25,7 @@ public:
      * Constructor
      */
     frame_publisher(const std::shared_ptr<config>& cfg, data::map_database* map_db,
-                    const unsigned int img_width = 1024);
+                    unsigned int img_width = 1024);
 
     /**
      * Destructor
@@ -42,19 +42,19 @@ public:
      * Get the current image with tracking information
      * NOTE: should be accessed from viewer thread
      */
-    cv::Mat draw_frame(const bool draw_text = true);
+    cv::Mat draw_frame(bool draw_text = true);
 
 protected:
-    unsigned int draw_initial_points(cv::Mat& img, const std::vector<cv::KeyPoint>& init_keypts,
-                                     const std::vector<int>& init_matches, const std::vector<cv::KeyPoint>& curr_keypts,
+    unsigned int draw_initial_points(cv::Mat& img, const data::keypoint_container &init_keypts,
+                                     const std::vector<int>& init_matches, const data::keypoint_container &curr_keypts,
                                      const float mag = 1.0) const;
 
-    unsigned int draw_tracked_points(cv::Mat& img, const std::vector<cv::KeyPoint>& curr_keypts,
+    unsigned int draw_tracked_points(cv::Mat& img, const data::keypoint_container &curr_keypts,
                                      const std::vector<bool>& is_tracked, const bool mapping_is_enabled,
                                      const float mag = 1.0) const;
 
-    void draw_info_text(cv::Mat& img, const tracker_state_t tracking_state, const unsigned int num_tracked,
-                        const double elapsed_ms, const bool mapping_is_enabled) const;
+    void draw_info_text(cv::Mat& img, tracker_state_t tracking_state, unsigned int num_tracked,
+                        double elapsed_ms, bool mapping_is_enabled) const;
 
     // colors (BGR)
     const cv::Scalar mapping_color_{0, 255, 255};
@@ -77,12 +77,12 @@ protected:
     tracker_state_t tracking_state_;
 
     //! initial keypoints
-    std::vector<cv::KeyPoint> init_keypts_;
+    data::keypoint_container init_keypts_;
     //! matching between initial frame and current frame
     std::vector<int> init_matches_;
 
     //! current keypoints
-    std::vector<cv::KeyPoint> curr_keypts_;
+    data::keypoint_container curr_keypts_;
 
     //! elapsed time for tracking
     double elapsed_ms_ = 0.0;

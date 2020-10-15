@@ -1,4 +1,5 @@
 #include "openvslam/data/landmark.h"
+#include "openvslam/data/keypoint.h"
 #include "openvslam/data/map_database.h"
 #include "openvslam/publish/frame_publisher.h"
 
@@ -22,9 +23,9 @@ frame_publisher::~frame_publisher() {
 cv::Mat frame_publisher::draw_frame(const bool draw_text) {
     cv::Mat img;
     tracker_state_t tracking_state;
-    std::vector<cv::KeyPoint> init_keypts;
+    data::keypoint_container init_keypts;
     std::vector<int> init_matches;
-    std::vector<cv::KeyPoint> curr_keypts;
+    data::keypoint_container curr_keypts;
     double elapsed_ms;
     bool mapping_is_enabled;
     std::vector<bool> is_tracked;
@@ -87,8 +88,8 @@ cv::Mat frame_publisher::draw_frame(const bool draw_text) {
     return img;
 }
 
-unsigned int frame_publisher::draw_initial_points(cv::Mat& img, const std::vector<cv::KeyPoint>& init_keypts,
-                                                  const std::vector<int>& init_matches, const std::vector<cv::KeyPoint>& curr_keypts,
+unsigned int frame_publisher::draw_initial_points(cv::Mat& img, const data::keypoint_container &init_keypts,
+                                                  const std::vector<int>& init_matches, const data::keypoint_container &curr_keypts,
                                                   const float mag) const {
     unsigned int num_tracked = 0;
 
@@ -97,9 +98,9 @@ unsigned int frame_publisher::draw_initial_points(cv::Mat& img, const std::vecto
             continue;
         }
 
-        cv::circle(img, init_keypts.at(i).pt * mag, 2, mapping_color_, -1);
-        cv::circle(img, curr_keypts.at(init_matches.at(i)).pt * mag, 2, mapping_color_, -1);
-        cv::line(img, init_keypts.at(i).pt * mag, curr_keypts.at(init_matches.at(i)).pt * mag, mapping_color_);
+        cv::circle(img, init_keypts.at(i).get_cv_keypoint().pt * mag, 2, mapping_color_, -1);
+        cv::circle(img, curr_keypts.at(init_matches.at(i)).get_cv_keypoint().pt * mag, 2, mapping_color_, -1);
+        cv::line(img, init_keypts.at(i).get_cv_keypoint().pt * mag, curr_keypts.at(init_matches.at(i)).get_cv_keypoint().pt * mag, mapping_color_);
 
         ++num_tracked;
     }
@@ -107,7 +108,7 @@ unsigned int frame_publisher::draw_initial_points(cv::Mat& img, const std::vecto
     return num_tracked;
 }
 
-unsigned int frame_publisher::draw_tracked_points(cv::Mat& img, const std::vector<cv::KeyPoint>& curr_keypts,
+unsigned int frame_publisher::draw_tracked_points(cv::Mat& img, const data::keypoint_container &curr_keypts,
                                                   const std::vector<bool>& is_tracked, const bool mapping_is_enabled,
                                                   const float mag) const {
     constexpr float radius = 5;
@@ -119,16 +120,16 @@ unsigned int frame_publisher::draw_tracked_points(cv::Mat& img, const std::vecto
             continue;
         }
 
-        const cv::Point2f pt_begin{curr_keypts.at(i).pt.x * mag - radius, curr_keypts.at(i).pt.y * mag - radius};
-        const cv::Point2f pt_end{curr_keypts.at(i).pt.x * mag + radius, curr_keypts.at(i).pt.y * mag + radius};
+        const cv::Point2f pt_begin{curr_keypts.at(i).get_cv_keypoint().pt.x * mag - radius, curr_keypts.at(i).get_cv_keypoint().pt.y * mag - radius};
+        const cv::Point2f pt_end{curr_keypts.at(i).get_cv_keypoint().pt.x * mag + radius, curr_keypts.at(i).get_cv_keypoint().pt.y * mag + radius};
 
         if (mapping_is_enabled) {
             cv::rectangle(img, pt_begin, pt_end, mapping_color_);
-            cv::circle(img, curr_keypts.at(i).pt * mag, 2, mapping_color_, -1);
+            cv::circle(img, curr_keypts.at(i).get_cv_keypoint().pt * mag, 2, mapping_color_, -1);
         }
         else {
             cv::rectangle(img, pt_begin, pt_end, localization_color_);
-            cv::circle(img, curr_keypts.at(i).pt * mag, 2, localization_color_, -1);
+            cv::circle(img, curr_keypts.at(i).get_cv_keypoint().pt * mag, 2, localization_color_, -1);
         }
 
         ++num_tracked;

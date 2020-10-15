@@ -7,6 +7,7 @@
 #include "openvslam/data/landmark.h"
 #include "openvslam/data/map_database.h"
 #include "openvslam/data/bow_database.h"
+#include "openvslam/data/keypoint.h"
 #include "openvslam/feature/orb_params.h"
 #include "openvslam/util/converter.h"
 
@@ -44,8 +45,8 @@ keyframe::keyframe(const frame& frm, map_database* map_db, bow_database* bow_db)
 
 keyframe::keyframe(const unsigned int id, const unsigned int src_frm_id, const double timestamp,
                    const Mat44_t& cam_pose_cw, camera::base* camera, const float depth_thr,
-                   const unsigned int num_keypts, const std::vector<cv::KeyPoint>& keypts,
-                   const std::vector<cv::KeyPoint>& undist_keypts, const eigen_alloc_vector<Vec3_t>& bearings,
+                   const unsigned int num_keypts, const keypoint_container& keypts,
+                   const keypoint_container& undist_keypts, const eigen_alloc_vector<Vec3_t>& bearings,
                    const std::vector<float>& stereo_x_right, const std::vector<float>& depths, const cv::Mat& descriptors,
                    const unsigned int num_scale_levels, const float scale_factor,
                    bow_vocabulary* bow_vocab, bow_database* bow_db, map_database* map_db)
@@ -55,7 +56,7 @@ keyframe::keyframe(const unsigned int id, const unsigned int src_frm_id, const d
       camera_(camera), depth_thr_(depth_thr),
       // constant observations
       num_keypts_(num_keypts), keypts_(keypts), undist_keypts_(undist_keypts), bearings_(bearings),
-      keypt_indices_in_cells_(assign_keypoints_to_grid(camera, undist_keypts)),
+      keypt_indices_in_cells_(assign_keypoints_to_grid(camera, undist_keypts.get_all_cv_keypoints())),
       stereo_x_right_(stereo_x_right), depths_(depths), descriptors_(descriptors.clone()),
       // graph node (connections is not assigned yet)
       graph_node_(std::unique_ptr<graph_node>(new graph_node(this, false))),
@@ -284,8 +285,8 @@ Vec3_t keyframe::triangulate_stereo(const unsigned int idx) const {
 
             const float depth = depths_.at(idx);
             if (0.0 < depth) {
-                const float x = undist_keypts_.at(idx).pt.x;
-                const float y = undist_keypts_.at(idx).pt.y;
+                const float x = undist_keypts_.at(idx).get_cv_keypoint().pt.x;
+                const float y = undist_keypts_.at(idx).get_cv_keypoint().pt.y;
                 const float unproj_x = (x - camera->cx_) * depth * camera->fx_inv_;
                 const float unproj_y = (y - camera->cy_) * depth * camera->fy_inv_;
                 const Vec3_t pos_c{unproj_x, unproj_y, depth};
@@ -302,8 +303,8 @@ Vec3_t keyframe::triangulate_stereo(const unsigned int idx) const {
 
             const float depth = depths_.at(idx);
             if (0.0 < depth) {
-                const float x = undist_keypts_.at(idx).pt.x;
-                const float y = undist_keypts_.at(idx).pt.y;
+                const float x = undist_keypts_.at(idx).get_cv_keypoint().pt.x;
+                const float y = undist_keypts_.at(idx).get_cv_keypoint().pt.y;
                 const float unproj_x = (x - camera->cx_) * depth * camera->fx_inv_;
                 const float unproj_y = (y - camera->cy_) * depth * camera->fy_inv_;
                 const Vec3_t pos_c{unproj_x, unproj_y, depth};

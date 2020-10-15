@@ -93,7 +93,7 @@ image_bounds fisheye::compute_image_bounds() const {
 
         data::keypoint_container undist_corners_container;
         undistort_keypoints(corners, undist_corners_container);
-        std::vector<cv::KeyPoint> undist_corners = undist_corners_container.get_cv_keypoints();
+        std::vector<cv::KeyPoint> undist_corners = undist_corners_container.get_all_cv_keypoints();
 
         if (theta_d > M_PI_2) {
             // 1. limit image_bounds by incident angle
@@ -156,7 +156,7 @@ void fisheye::undistort_keypoints(data::keypoint_container& dist_keypts, data::k
     }
 }
 
-void fisheye::convert_keypoints_to_bearings(data::keypoint_container &undist_keypt, eigen_alloc_vector<Vec3_t>& bearings) const {
+void fisheye::convert_keypoints_to_bearings(const data::keypoint_container &undist_keypt, eigen_alloc_vector<Vec3_t>& bearings) const {
     bearings.resize(undist_keypt.size());
     for (unsigned long idx = 0; idx < undist_keypt.size(); ++idx) {
         const auto x_normalized = (undist_keypt.at(idx).get_cv_keypoint().pt.x - cx_) / fx_;

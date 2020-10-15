@@ -214,7 +214,7 @@ void landmark::update_normal_and_depth() {
 
     const Vec3_t cam_to_lm_vec = pos_w - ref_keyfrm->get_cam_center();
     const auto dist = cam_to_lm_vec.norm();
-    const auto scale_level = ref_keyfrm->undist_keypts_.at(observations.at(ref_keyfrm)).octave;
+    const auto scale_level = ref_keyfrm->undist_keypts_.at(observations.at(ref_keyfrm)).get_cv_keypoint().octave;
     const auto scale_factor = ref_keyfrm->scale_factors_.at(scale_level);
     const auto num_scale_levels = ref_keyfrm->num_scale_levels_;
 

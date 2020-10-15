@@ -44,8 +44,8 @@ bool perspective::initialize(const data::frame& cur_frm, const std::vector<int>&
     cur_cam_matrix_ = get_camera_matrix(cur_frm.camera_);
 
     // compute H and F matrices
-    auto homography_solver = solve::homography_solver(ref_undist_keypts_, cur_undist_keypts_, ref_cur_matches_, 1.0);
-    auto fundamental_solver = solve::fundamental_solver(ref_undist_keypts_, cur_undist_keypts_, ref_cur_matches_, 1.0);
+    auto homography_solver = solve::homography_solver(ref_undist_keypts_.get_all_cv_keypoints(), cur_undist_keypts_.get_all_cv_keypoints(), ref_cur_matches_, 1.0);
+    auto fundamental_solver = solve::fundamental_solver(ref_undist_keypts_.get_all_cv_keypoints(), cur_undist_keypts_.get_all_cv_keypoints(), ref_cur_matches_, 1.0);
     std::thread thread_for_H(&solve::homography_solver::find_via_ransac, &homography_solver, num_ransac_iters_, true);
     std::thread thread_for_F(&solve::fundamental_solver::find_via_ransac, &fundamental_solver, num_ransac_iters_, true);
     thread_for_H.join();

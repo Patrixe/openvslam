@@ -23,7 +23,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <spdlog/spdlog.h>
 #include <popl.hpp>
-#include <openvslam/segmentation_system.h>
+#include <openvslam/segmentation/segmentation_system.h>
 
 #ifdef USE_STACK_TRACE_LOGGER
 #include <glog/logging.h>

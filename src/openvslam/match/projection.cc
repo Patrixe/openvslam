@@ -1,6 +1,7 @@
 #include "openvslam/camera/base.h"
 #include "openvslam/data/frame.h"
 #include "openvslam/data/keyframe.h"
+#include "openvslam/data/keypoint.h"
 #include "openvslam/data/landmark.h"
 #include "openvslam/match/projection.h"
 #include "openvslam/match/angle_checker.h"
@@ -57,11 +58,11 @@ unsigned int projection::match_frame_and_landmarks(data::frame& frm, const std::
                 second_best_hamm_dist = best_hamm_dist;
                 best_hamm_dist = dist;
                 second_best_scale_level = best_scale_level;
-                best_scale_level = frm.undist_keypts_.at(idx).octave;
+                best_scale_level = frm.undist_keypts_.at(idx).get_cv_keypoint().octave;
                 best_idx = idx;
             }
             else if (dist < second_best_hamm_dist) {
-                second_best_scale_level = frm.undist_keypts_.at(idx).octave;
+                second_best_scale_level = frm.undist_keypts_.at(idx).get_cv_keypoint().octave;
                 second_best_hamm_dist = dist;
             }
         }
@@ -132,7 +133,7 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
         }
 
         // 隣接フレーム間では対応する特徴点のスケールは一定であると仮定し，探索範囲を設定
-        const auto last_scale_level = last_frm.keypts_.at(idx_last).octave;
+        const auto last_scale_level = last_frm.keypts_.at(idx_last).get_cv_keypoint().octave;
 
         // 3次元点を再投影した点が存在するcellの特徴点を取得
         std::vector<unsigned int> indices;
@@ -192,7 +193,7 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
 
         if (check_orientation_) {
             const auto delta_angle
-                = last_frm.undist_keypts_.at(idx_last).angle - curr_frm.undist_keypts_.at(best_idx).angle;
+                = last_frm.undist_keypts_.at(idx_last).get_cv_keypoint().angle - curr_frm.undist_keypts_.at(best_idx).get_cv_keypoint().angle;
             angle_checker.append_delta_angle(delta_angle, best_idx);
         }
     }
@@ -296,7 +297,7 @@ unsigned int projection::match_frame_and_keyframe(data::frame& curr_frm, data::k
 
         if (check_orientation_) {
             const auto delta_angle
-                = keyfrm->undist_keypts_.at(idx).angle - curr_frm.undist_keypts_.at(best_idx).angle;
+                = keyfrm->undist_keypts_.at(idx).get_cv_keypoint().angle - curr_frm.undist_keypts_.at(best_idx).get_cv_keypoint().angle;
             angle_checker.append_delta_angle(delta_angle, best_idx);
         }
     }
@@ -384,7 +385,7 @@ unsigned int projection::match_by_Sim3_transform(data::keyframe* keyfrm, const M
                 continue;
             }
 
-            const auto scale_level = static_cast<unsigned int>(keyfrm->keypts_.at(idx).octave);
+            const auto scale_level = static_cast<unsigned int>(keyfrm->keypts_.at(idx).get_cv_keypoint().octave);
 
             // TODO: keyfrm->get_keypts_in_cell()でスケールの判断をする
             if (scale_level < pred_scale_level - 1 || pred_scale_level < scale_level) {
@@ -509,7 +510,7 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
             int best_idx_2 = -1;
 
             for (const auto idx_2 : indices) {
-                const auto scale_level = static_cast<unsigned int>(keyfrm_2->keypts_.at(idx_2).octave);
+                const auto scale_level = static_cast<unsigned int>(keyfrm_2->keypts_.at(idx_2).get_cv_keypoint().octave);
 
                 // TODO: keyfrm->get_keypts_in_cell()でスケールの判断をする
                 if (scale_level < pred_scale_level - 1 || pred_scale_level < scale_level) {
@@ -592,7 +593,7 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
             int best_idx_1 = -1;
 
             for (const auto idx_1 : indices) {
-                const auto scale_level = static_cast<unsigned int>(keyfrm_1->keypts_.at(idx_1).octave);
+                const auto scale_level = static_cast<unsigned int>(keyfrm_1->keypts_.at(idx_1).get_cv_keypoint().octave);
 
                 // TODO: keyfrm->get_keypts_in_cell()でスケールの判断をする
                 if (scale_level < pred_scale_level - 1 || pred_scale_level < scale_level) {

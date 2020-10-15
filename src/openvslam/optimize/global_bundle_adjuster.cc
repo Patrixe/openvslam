@@ -109,12 +109,12 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
             const auto keyfrm_vtx = keyfrm_vtx_container.get_vertex(keyfrm);
             const auto& undist_keypt = keyfrm->undist_keypts_.at(idx);
             const float x_right = keyfrm->stereo_x_right_.at(idx);
-            const float inv_sigma_sq = keyfrm->inv_level_sigma_sq_.at(undist_keypt.octave);
+            const float inv_sigma_sq = keyfrm->inv_level_sigma_sq_.at(undist_keypt.get_cv_keypoint().octave);
             const auto sqrt_chi_sq = (keyfrm->camera_->setup_type_ == camera::setup_type_t::Monocular)
                                          ? sqrt_chi_sq_2D
                                          : sqrt_chi_sq_3D;
             auto reproj_edge_wrap = reproj_edge_wrapper(keyfrm, keyfrm_vtx, lm, lm_vtx,
-                                                        idx, undist_keypt.pt.x, undist_keypt.pt.y, x_right,
+                                                        idx, undist_keypt.get_cv_keypoint().pt.x, undist_keypt.get_cv_keypoint().pt.y, x_right,
                                                         inv_sigma_sq, sqrt_chi_sq, use_huber_kernel_);
             reproj_edge_wraps.push_back(reproj_edge_wrap);
             optimizer.addEdge(reproj_edge_wrap.edge_);

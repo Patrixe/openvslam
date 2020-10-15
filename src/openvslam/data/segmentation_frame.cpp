@@ -46,7 +46,7 @@ namespace openvslam {
             outlier_flags_ = std::vector<bool>(num_keypts_, false);
 
             // Assign all the keypoints into grid
-            assign_keypoints_to_grid(camera_, undist_keypts_.get_cv_keypoints(), keypt_indices_in_cells_);
+            assign_keypoints_to_grid(camera_, undist_keypts_.get_all_cv_keypoints(), keypt_indices_in_cells_);
         }
 
         // stereo image
@@ -80,7 +80,7 @@ namespace openvslam {
 
             // Estimate depth with stereo match
             match::stereo stereo_matcher(extractor_left->image_pyramid_, extractor_right_->image_pyramid_,
-                                         keypts_.get_cv_keypoints(), keypts_right_.get_cv_keypoints(), descriptors_, descriptors_right_,
+                                         keypts_.get_all_cv_keypoints(), keypts_right_.get_all_cv_keypoints(), descriptors_, descriptors_right_,
                                          scale_factors_, inv_scale_factors_,
                                          camera->focal_x_baseline_, camera_->true_baseline_);
             stereo_matcher.compute(stereo_x_right_, depths_);
@@ -93,7 +93,7 @@ namespace openvslam {
             outlier_flags_ = std::vector<bool>(num_keypts_, false);
 
             // Assign all the keypoints into grid
-            openvslam::data::assign_keypoints_to_grid(camera_, undist_keypts_.get_cv_keypoints(), keypt_indices_in_cells_);
+            openvslam::data::assign_keypoints_to_grid(camera_, undist_keypts_.get_all_cv_keypoints(), keypt_indices_in_cells_);
         }
 
         // depth image
@@ -128,7 +128,7 @@ namespace openvslam {
             outlier_flags_ = std::vector<bool>(num_keypts_, false);
 
             // Assign all the keypoints into grid
-            assign_keypoints_to_grid(camera_, undist_keypts_.get_cv_keypoints(), keypt_indices_in_cells_);
+            assign_keypoints_to_grid(camera_, undist_keypts_.get_all_cv_keypoints(), keypt_indices_in_cells_);
         }
 //
 //        // TODO pali: the stereo problem remains, is this handled somewhere else in the code?
@@ -151,14 +151,12 @@ namespace openvslam {
             switch (img_side) {
                 case image_side::Left: {
                     dynamic_cast<feature::segmented_orb_extractor *>(extractor_)->extract(img, seg_img, mask,
-                                                                                          undist_keypts_,
-                                                                                          descriptors_);
+                                                                                          keypts_,descriptors_);
                     break;
                 }
                 case image_side::Right: {
                     dynamic_cast<feature::segmented_orb_extractor *>(extractor_right_)->extract(img, seg_img, mask,
-                                                                                                undist_keypts_,
-                                                                                                descriptors_right_);
+                                                                                                keypts_,descriptors_right_);
                     break;
                 }
             }

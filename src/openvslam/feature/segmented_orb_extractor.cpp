@@ -156,10 +156,8 @@ namespace openvslam {
 
             // Compute orientations
             for (unsigned int level = 0; level < orb_params_.num_levels_; ++level) {
-                compute_orientation(image_pyramid_.at(level), all_keypts.at(level).get_cv_keypoints());
+                compute_orientation(image_pyramid_.at(level), all_keypts.at(level));
             }
-
-            std::cout << "\n\n";
         }
 
         void segmented_orb_extractor::extract(const cv::_InputArray &in_image, const cv::Mat &seg_img,
@@ -231,11 +229,11 @@ namespace openvslam {
                 cv::Mat blurred_image = image_pyramid_.at(level).clone();
                 cv::GaussianBlur(blurred_image, blurred_image, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
                 cv::Mat descriptors_at_level = descriptors.rowRange(offset, offset + num_keypts_at_level);
-                compute_orb_descriptors(blurred_image, keypts_at_level.get_cv_keypoints(), descriptors_at_level);
+                compute_orb_descriptors(blurred_image, keypts_at_level.get_all_cv_keypoints(), descriptors_at_level);
 
                 offset += num_keypts_at_level;
 
-                correct_keypoint_scale(keypts_at_level.get_cv_keypoints(), level);
+                correct_keypoint_scale(keypts_at_level, level);
 
                 keypts.insert(keypts.end(), keypts_at_level.begin(), keypts_at_level.end());
             }

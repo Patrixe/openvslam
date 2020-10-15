@@ -45,7 +45,7 @@ public:
     initializer_state_t get_state() const;
 
     //! Get keypoints of the initial frame
-    std::vector<cv::KeyPoint> get_initial_keypoints() const;
+    data::keypoint_container get_initial_keypoints() const;
 
     //! Get initial matches between the initial and current frames
     std::vector<int> get_initial_matches() const;

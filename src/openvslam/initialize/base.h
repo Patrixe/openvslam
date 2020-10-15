@@ -25,8 +25,8 @@ public:
 
     //! Constructor
     base(const data::frame& ref_frm,
-         const unsigned int num_ransac_iters, const unsigned int min_num_triangulated,
-         const float parallax_deg_thr, const float reproj_err_thr);
+         unsigned int num_ransac_iters, unsigned int min_num_triangulated,
+         float parallax_deg_thr, float reproj_err_thr);
 
     //! Destructor
     virtual ~base() = default;
@@ -49,11 +49,11 @@ public:
 protected:
     //! Find the most plausible pose and set them to the member variables (outputs)
     bool find_most_plausible_pose(const eigen_alloc_vector<Mat33_t>& init_rots, const eigen_alloc_vector<Vec3_t>& init_transes,
-                                  const std::vector<bool>& is_inlier_match, const bool depth_is_positive);
+                                  const std::vector<bool>& is_inlier_match, bool depth_is_positive);
 
     //! Check the reconstructed camera poses via triangulation-based verification
     unsigned int check_pose(const Mat33_t& rot_ref_to_cur, const Vec3_t& trans_ref_to_cur,
-                            const std::vector<bool>& is_inlier_match, const bool depth_is_positive,
+                            const std::vector<bool>& is_inlier_match, bool depth_is_positive,
                             eigen_alloc_vector<Vec3_t>& triangulated_pts, std::vector<bool>& is_triangulated,
                             float& parallax_deg);
 
@@ -63,7 +63,7 @@ protected:
     //! camera model of reference frame
     camera::base* const ref_camera_;
     //! undistorted keypoints of reference frame
-    const std::vector<cv::KeyPoint> ref_undist_keypts_;
+    const data::keypoint_container ref_undist_keypts_;
     //! bearing vectors of reference frame
     const eigen_alloc_vector<Vec3_t> ref_bearings_;
 
@@ -73,7 +73,7 @@ protected:
     //! camera matrix of current frame
     camera::base* cur_camera_;
     //! undistorted keypoints of current frame
-    std::vector<cv::KeyPoint> cur_undist_keypts_;
+    data::keypoint_container cur_undist_keypts_;
     //! bearing vectors of current frame
     eigen_alloc_vector<Vec3_t> cur_bearings_;
 

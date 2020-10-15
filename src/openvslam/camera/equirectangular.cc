@@ -43,7 +43,7 @@ void equirectangular::undistort_keypoints(data::keypoint_container &dist_keypts,
     undist_keypts = dist_keypts;
 }
 
-void equirectangular::convert_keypoints_to_bearings(data::keypoint_container &undist_keypts, eigen_alloc_vector<Vec3_t>& bearings) const {
+void equirectangular::convert_keypoints_to_bearings(const data::keypoint_container &undist_keypts, eigen_alloc_vector<Vec3_t>& bearings) const {
     bearings.resize(undist_keypts.size());
     for (unsigned int idx = 0; idx < undist_keypts.size(); ++idx) {
         // convert to unit polar coordinates

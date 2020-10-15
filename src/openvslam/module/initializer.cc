@@ -40,7 +40,7 @@ initializer_state_t initializer::get_state() const {
     return state_;
 }
 
-std::vector<cv::KeyPoint> initializer::get_initial_keypoints() const {
+data::keypoint_container initializer::get_initial_keypoints() const {
     return init_frm_.keypts_;
 }
 
@@ -107,7 +107,7 @@ void initializer::create_initializer(data::frame& curr_frm) {
     // initialize the previously matched coordinates
     prev_matched_coords_.resize(init_frm_.undist_keypts_.size());
     for (unsigned int i = 0; i < init_frm_.undist_keypts_.size(); ++i) {
-        prev_matched_coords_.at(i) = init_frm_.undist_keypts_.at(i).pt;
+        prev_matched_coords_.at(i) = init_frm_.undist_keypts_.at(i).get_cv_keypoint().pt;
     }
 
     // initialize matchings (init_idx -> curr_idx)

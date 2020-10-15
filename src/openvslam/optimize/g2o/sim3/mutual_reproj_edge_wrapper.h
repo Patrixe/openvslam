@@ -5,6 +5,7 @@
 #include "openvslam/camera/fisheye.h"
 #include "openvslam/camera/equirectangular.h"
 #include "openvslam/data/landmark.h"
+#include "openvslam/data/keypoint.h"
 #include "openvslam/optimize/g2o/sim3/forward_reproj_edge.h"
 #include "openvslam/optimize/g2o/sim3/backward_reproj_edge.h"
 
@@ -76,8 +77,8 @@ mutual_reproj_edge_wapper<T>::mutual_reproj_edge_wapper(T* shot1, unsigned int i
                 auto edge_12 = new g2o::sim3::perspective_forward_reproj_edge();
                 // 特徴点情報と再投影誤差分散をセット
                 const auto& undist_keypt_1 = shot1->undist_keypts_.at(idx1);
-                const Vec2_t obs_1{undist_keypt_1.pt.x, undist_keypt_1.pt.y};
-                const float inv_sigma_sq_1 = shot1->inv_level_sigma_sq_.at(undist_keypt_1.octave);
+                const Vec2_t obs_1{undist_keypt_1.get_cv_keypoint().pt.x, undist_keypt_1.get_cv_keypoint().pt.y};
+                const float inv_sigma_sq_1 = shot1->inv_level_sigma_sq_.at(undist_keypt_1.get_cv_keypoint().octave);
                 edge_12->setMeasurement(obs_1);
                 edge_12->setInformation(Mat22_t::Identity() * inv_sigma_sq_1);
                 // 3次元点をセット
@@ -100,8 +101,8 @@ mutual_reproj_edge_wapper<T>::mutual_reproj_edge_wapper(T* shot1, unsigned int i
                 auto edge_12 = new g2o::sim3::perspective_forward_reproj_edge();
                 // 特徴点情報と再投影誤差分散をセット
                 const auto& undist_keypt_1 = shot1->undist_keypts_.at(idx1);
-                const Vec2_t obs_1{undist_keypt_1.pt.x, undist_keypt_1.pt.y};
-                const float inv_sigma_sq_1 = shot1->inv_level_sigma_sq_.at(undist_keypt_1.octave);
+                const Vec2_t obs_1{undist_keypt_1.get_cv_keypoint().pt.x, undist_keypt_1.get_cv_keypoint().pt.y};
+                const float inv_sigma_sq_1 = shot1->inv_level_sigma_sq_.at(undist_keypt_1.get_cv_keypoint().octave);
                 edge_12->setMeasurement(obs_1);
                 edge_12->setInformation(Mat22_t::Identity() * inv_sigma_sq_1);
                 // 3次元点をセット
@@ -124,8 +125,8 @@ mutual_reproj_edge_wapper<T>::mutual_reproj_edge_wapper(T* shot1, unsigned int i
                 auto edge_12 = new g2o::sim3::equirectangular_forward_reproj_edge();
                 // 特徴点情報と再投影誤差分散をセット
                 const auto& undist_keypt_1 = shot1->undist_keypts_.at(idx1);
-                const Vec2_t obs_1{undist_keypt_1.pt.x, undist_keypt_1.pt.y};
-                const float inv_sigma_sq_1 = shot1->inv_level_sigma_sq_.at(undist_keypt_1.octave);
+                const Vec2_t obs_1{undist_keypt_1.get_cv_keypoint().pt.x, undist_keypt_1.get_cv_keypoint().pt.y};
+                const float inv_sigma_sq_1 = shot1->inv_level_sigma_sq_.at(undist_keypt_1.get_cv_keypoint().octave);
                 edge_12->setMeasurement(obs_1);
                 edge_12->setInformation(Mat22_t::Identity() * inv_sigma_sq_1);
                 // 3次元点をセット
@@ -159,8 +160,8 @@ mutual_reproj_edge_wapper<T>::mutual_reproj_edge_wapper(T* shot1, unsigned int i
                 auto edge_21 = new g2o::sim3::perspective_backward_reproj_edge();
                 // 特徴点情報と再投影誤差分散をセット
                 const auto& undist_keypt_2 = shot2->undist_keypts_.at(idx2);
-                const Vec2_t obs_2{undist_keypt_2.pt.x, undist_keypt_2.pt.y};
-                const float inv_sigma_sq_2 = shot2->inv_level_sigma_sq_.at(undist_keypt_2.octave);
+                const Vec2_t obs_2{undist_keypt_2.get_cv_keypoint().pt.x, undist_keypt_2.get_cv_keypoint().pt.y};
+                const float inv_sigma_sq_2 = shot2->inv_level_sigma_sq_.at(undist_keypt_2.get_cv_keypoint().octave);
                 edge_21->setMeasurement(obs_2);
                 edge_21->setInformation(Mat22_t::Identity() * inv_sigma_sq_2);
                 // 3次元点をセット
@@ -183,8 +184,8 @@ mutual_reproj_edge_wapper<T>::mutual_reproj_edge_wapper(T* shot1, unsigned int i
                 auto edge_21 = new g2o::sim3::perspective_backward_reproj_edge();
                 // 特徴点情報と再投影誤差分散をセット
                 const auto& undist_keypt_2 = shot2->undist_keypts_.at(idx2);
-                const Vec2_t obs_2{undist_keypt_2.pt.x, undist_keypt_2.pt.y};
-                const float inv_sigma_sq_2 = shot2->inv_level_sigma_sq_.at(undist_keypt_2.octave);
+                const Vec2_t obs_2{undist_keypt_2.get_cv_keypoint().pt.x, undist_keypt_2.get_cv_keypoint().pt.y};
+                const float inv_sigma_sq_2 = shot2->inv_level_sigma_sq_.at(undist_keypt_2.get_cv_keypoint().octave);
                 edge_21->setMeasurement(obs_2);
                 edge_21->setInformation(Mat22_t::Identity() * inv_sigma_sq_2);
                 // 3次元点をセット
@@ -207,8 +208,8 @@ mutual_reproj_edge_wapper<T>::mutual_reproj_edge_wapper(T* shot1, unsigned int i
                 auto edge_21 = new g2o::sim3::equirectangular_backward_reproj_edge();
                 // 特徴点情報と再投影誤差分散をセット
                 const auto& undist_keypt_2 = shot2->undist_keypts_.at(idx2);
-                const Vec2_t obs_2{undist_keypt_2.pt.x, undist_keypt_2.pt.y};
-                const float inv_sigma_sq_2 = shot2->inv_level_sigma_sq_.at(undist_keypt_2.octave);
+                const Vec2_t obs_2{undist_keypt_2.get_cv_keypoint().pt.x, undist_keypt_2.get_cv_keypoint().pt.y};
+                const float inv_sigma_sq_2 = shot2->inv_level_sigma_sq_.at(undist_keypt_2.get_cv_keypoint().octave);
                 edge_21->setMeasurement(obs_2);
                 edge_21->setInformation(Mat22_t::Identity() * inv_sigma_sq_2);
                 // 3次元点をセット

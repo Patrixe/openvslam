@@ -1,4 +1,5 @@
 #include "openvslam/data/frame.h"
+#include "openvslam/data/keypoint.h"
 #include "openvslam/match/area.h"
 #include "openvslam/match/angle_checker.h"
 
@@ -18,7 +19,7 @@ unsigned int area::match_in_consistent_area(data::frame& frm_1, data::frame& frm
 
     for (unsigned int idx_1 = 0; idx_1 < frm_1.undist_keypts_.size(); ++idx_1) {
         const auto& undist_keypt_1 = frm_1.undist_keypts_.at(idx_1);
-        const auto scale_level_1 = undist_keypt_1.octave;
+        const auto scale_level_1 = undist_keypt_1.get_cv_keypoint().octave;
 
         // 第0スケールの特徴点のみを用いる
         if (0 < scale_level_1) {
@@ -86,7 +87,7 @@ unsigned int area::match_in_consistent_area(data::frame& frm_1, data::frame& frm
 
         if (check_orientation_) {
             const auto delta_angle
-                = frm_1.undist_keypts_.at(idx_1).angle - frm_2.undist_keypts_.at(best_idx_2).angle;
+                = frm_1.undist_keypts_.at(idx_1).get_cv_keypoint().angle - frm_2.undist_keypts_.at(best_idx_2).get_cv_keypoint().angle;
             angle_checker.append_delta_angle(delta_angle, idx_1);
         }
     }
@@ -104,7 +105,7 @@ unsigned int area::match_in_consistent_area(data::frame& frm_1, data::frame& frm
     // previous matchesを更新する
     for (unsigned int idx_1 = 0; idx_1 < matched_indices_2_in_frm_1.size(); ++idx_1) {
         if (0 <= matched_indices_2_in_frm_1.at(idx_1)) {
-            prev_matched_pts.at(idx_1) = frm_2.undist_keypts_.at(matched_indices_2_in_frm_1.at(idx_1)).pt;
+            prev_matched_pts.at(idx_1) = frm_2.undist_keypts_.at(matched_indices_2_in_frm_1.at(idx_1)).get_cv_keypoint().pt;
         }
     }
 

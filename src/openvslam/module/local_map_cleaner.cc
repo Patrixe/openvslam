@@ -1,4 +1,5 @@
 #include "openvslam/data/keyframe.h"
+#include "openvslam/data/keypoint.h"
 #include "openvslam/data/landmark.h"
 #include "openvslam/module/local_map_cleaner.h"
 
@@ -138,7 +139,7 @@ void local_map_cleaner::count_redundant_observations(data::keyframe* keyfrm, uns
         }
 
         // `keyfrm` observes `lm` with the scale level `scale_level`
-        const auto scale_level = keyfrm->undist_keypts_.at(idx).octave;
+        const auto scale_level = keyfrm->undist_keypts_.at(idx).get_cv_keypoint().octave;
         // get observers of `lm`
         const auto observations = lm->get_observations();
 
@@ -154,7 +155,7 @@ void local_map_cleaner::count_redundant_observations(data::keyframe* keyfrm, uns
             }
 
             // `ngh_keyfrm` observes `lm` with the scale level `ngh_scale_level`
-            const auto ngh_scale_level = ngh_keyfrm->undist_keypts_.at(obs.second).octave;
+            const auto ngh_scale_level = ngh_keyfrm->undist_keypts_.at(obs.second).get_cv_keypoint().octave;
 
             // compare the scale levels
             if (ngh_scale_level <= scale_level + 1) {

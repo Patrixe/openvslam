@@ -14,62 +14,7 @@
 
 namespace openvslam {
     segmentation_system::segmentation_system(const std::shared_ptr<config> &cfg, const std::string &vocab_file_path,
-                                             const std::shared_ptr<segmentation_config> seg_cfg) {
-        spdlog::debug("CONSTRUCT: system");
-
-        std::cout << R"(  ___               __   _____ _      _   __  __ )" << std::endl;
-        std::cout << R"( / _ \ _ __  ___ _ _\ \ / / __| |    /_\ |  \/  |)" << std::endl;
-        std::cout << R"(| (_) | '_ \/ -_) ' \\ V /\__ \ |__ / _ \| |\/| |)" << std::endl;
-        std::cout << R"( \___/| .__/\___|_||_|\_/ |___/____/_/ \_\_|  |_|)" << std::endl;
-        std::cout << R"(      |_|                                        )" << std::endl;
-        std::cout << std::endl;
-        std::cout << "Copyright (C) 2020," << std::endl;
-        std::cout << "National Institute of Advanced Industrial Science and Technology (AIST)" << std::endl;
-        std::cout << "All rights reserved." << std::endl;
-        std::cout << std::endl;
-        std::cout << "Experimental image segmentation implementation." << std::endl;
-        std::cout << std::endl;
-        std::cout << "This is free software," << std::endl;
-        std::cout << "and you are welcome to redistribute it under certain conditions." << std::endl;
-        std::cout << "See the LICENSE file." << std::endl;
-        std::cout << std::endl;
-
-        // missing initializations because of derived members
-        cfg_ = cfg;
-        camera_ = cfg_->camera_;
-
-        // show configuration
-        std::cout << *cfg_ << std::endl;
-
-        // load ORB vocabulary
-        spdlog::info("loading ORB vocabulary: {}", vocab_file_path);
-#ifdef USE_DBOW2
-        bow_vocab_ = new data::bow_vocabulary();
-        try {
-            bow_vocab_->loadFromBinaryFile(vocab_file_path);
-        }
-        catch (const std::exception &e) {
-            spdlog::critical("wrong path to vocabulary");
-            delete bow_vocab_;
-            bow_vocab_ = nullptr;
-            exit(EXIT_FAILURE);
-        }
-#else
-        bow_vocab_ = new fbow::Vocabulary();
-        bow_vocab_->readFromFile(vocab_file_path);
-        if (!bow_vocab_->isValid()) {
-            spdlog::critical("wrong path to vocabulary");
-            delete bow_vocab_;
-            bow_vocab_ = nullptr;
-            exit(EXIT_FAILURE);
-        }
-#endif
-
-        // database
-        cam_db_ = new data::camera_database(camera_);
-        map_db_ = new data::map_database();
-        bow_db_ = new data::bow_database(bow_vocab_);
-
+                                             const std::shared_ptr<segmentation_config> seg_cfg) :system(cfg, vocab_file_path) {
         // frame and map publisher
         frame_publisher_ = std::shared_ptr<publish::frame_publisher>(new publish::frame_publisher(cfg_, map_db_));
         map_publisher_ = std::shared_ptr<publish::map_publisher>(new publish::map_publisher(cfg_, map_db_));

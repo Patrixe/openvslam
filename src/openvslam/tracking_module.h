@@ -68,7 +68,7 @@ public:
     bool get_mapping_module_status() const;
 
     //! Get the keypoints of the initial frame
-    std::vector<cv::KeyPoint> get_initial_keypoints() const;
+    data::keypoint_container get_initial_keypoints() const;
 
     //! Get the keypoint matches between the initial frame and the current frame
     std::vector<int> get_initial_matches() const;

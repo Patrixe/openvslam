@@ -18,13 +18,13 @@ nlohmann::json convert_translation_to_json(const Vec3_t& trans_cw);
 
 Vec3_t convert_json_to_translation(const nlohmann::json& json_trans_cw);
 
-nlohmann::json convert_keypoints_to_json(const std::vector<cv::KeyPoint>& keypts);
+nlohmann::json convert_keypoints_to_json(const keypoint_container& keypts);
 
-std::vector<cv::KeyPoint> convert_json_to_keypoints(const nlohmann::json& json_keypts);
+keypoint_container convert_json_to_keypoints(const nlohmann::json& json_keypts);
 
-nlohmann::json convert_undistorted_to_json(const std::vector<cv::KeyPoint>& undist_keypts);
+nlohmann::json convert_undistorted_to_json(const keypoint_container& undist_keypts);
 
-std::vector<cv::KeyPoint> convert_json_to_undistorted(const nlohmann::json& json_undist_keypts, const std::vector<cv::KeyPoint>& keypts = {});
+keypoint_container convert_json_to_undistorted(const nlohmann::json& json_undist_keypts);
 
 nlohmann::json convert_descriptors_to_json(const cv::Mat& descriptors);
 

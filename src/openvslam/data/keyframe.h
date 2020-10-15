@@ -5,6 +5,7 @@
 #include "openvslam/camera/base.h"
 #include "openvslam/data/graph_node.h"
 #include "openvslam/data/bow_vocabulary.h"
+#include "openvslam/data/keypoint.h"
 
 #include <set>
 #include <mutex>
@@ -54,12 +55,12 @@ public:
      * Constructor for map loading
      * (NOTE: some variables must be recomputed after the construction. See the definition.)
      */
-    keyframe(const unsigned int id, const unsigned int src_frm_id, const double timestamp,
+    keyframe(unsigned int id, unsigned int src_frm_id, double timestamp,
              const Mat44_t& cam_pose_cw, camera::base* camera, const float depth_thr,
-             const unsigned int num_keypts, const std::vector<cv::KeyPoint>& keypts,
-             const std::vector<cv::KeyPoint>& undist_keypts, const eigen_alloc_vector<Vec3_t>& bearings,
+             unsigned int num_keypts, const keypoint_container& keypts,
+             const keypoint_container& undist_keypts, const eigen_alloc_vector<Vec3_t>& bearings,
              const std::vector<float>& stereo_x_right, const std::vector<float>& depths, const cv::Mat& descriptors,
-             const unsigned int num_scale_levels, const float scale_factor,
+             unsigned int num_scale_levels, float scale_factor,
              bow_vocabulary* bow_vocab, bow_database* bow_db, map_database* map_db);
 
     /**
@@ -116,12 +117,12 @@ public:
     /**
      * Add a landmark observed by myself at keypoint idx
      */
-    void add_landmark(landmark* lm, const unsigned int idx);
+    void add_landmark(landmark* lm, unsigned int idx);
 
     /**
      * Erase a landmark observed by myself at keypoint idx
      */
-    void erase_landmark_with_index(const unsigned int idx);
+    void erase_landmark_with_index(unsigned int idx);
 
     /**
      * Erase a landmark
@@ -131,7 +132,7 @@ public:
     /**
      * Replace the landmark
      */
-    void replace_landmark(landmark* lm, const unsigned int idx);
+    void replace_landmark(landmark* lm, unsigned int idx);
 
     /**
      * Get all of the landmarks
@@ -147,27 +148,27 @@ public:
     /**
      * Get the number of tracked landmarks which have observers equal to or greater than the threshold
      */
-    unsigned int get_num_tracked_landmarks(const unsigned int min_num_obs_thr) const;
+    unsigned int get_num_tracked_landmarks(unsigned int min_num_obs_thr) const;
 
     /**
      * Get the landmark associated keypoint idx
      */
-    landmark* get_landmark(const unsigned int idx) const;
+    landmark* get_landmark(unsigned int idx) const;
 
     /**
      * Get the keypoint indices in the cell which reference point is located
      */
-    std::vector<unsigned int> get_keypoints_in_cell(const float ref_x, const float ref_y, const float margin) const;
+    std::vector<unsigned int> get_keypoints_in_cell(float ref_x, float ref_y, float margin) const;
 
     /**
      * Triangulate the keypoint using the disparity
      */
-    Vec3_t triangulate_stereo(const unsigned int idx) const;
+    Vec3_t triangulate_stereo(unsigned int idx) const;
 
     /**
      * Compute median of depths
      */
-    float compute_median_depth(const bool abs = false) const;
+    float compute_median_depth(bool abs = false) const;
 
     //-----------------------------------------
     // flags
@@ -237,9 +238,9 @@ public:
     const unsigned int num_keypts_;
 
     //! keypoints of monocular or stereo left image
-    const std::vector<cv::KeyPoint> keypts_;
+    const keypoint_container keypts_;
     //! undistorted keypoints of monocular or stereo left image
-    const std::vector<cv::KeyPoint> undist_keypts_;
+    const keypoint_container undist_keypts_;
     //! bearing vectors
     const eigen_alloc_vector<Vec3_t> bearings_;
 

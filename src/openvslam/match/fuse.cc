@@ -1,6 +1,7 @@
 #include "openvslam/match/fuse.h"
 #include "openvslam/camera/base.h"
 #include "openvslam/data/keyframe.h"
+#include "openvslam/data/keypoint.h"
 #include "openvslam/data/landmark.h"
 
 #include <vector>
@@ -80,7 +81,7 @@ unsigned int fuse::detect_duplication(data::keyframe* keyfrm, const Mat44_t& Sim
         int best_idx = -1;
 
         for (const auto idx : indices) {
-            const auto scale_level = keyfrm->keypts_.at(idx).octave;
+            const auto scale_level = keyfrm->keypts_.at(idx).get_cv_keypoint().octave;
 
             // TODO: keyfrm->get_keypts_in_cell()でスケールの判断をする
             if (scale_level < pred_scale_level - 1 || pred_scale_level < scale_level) {
@@ -188,7 +189,7 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const T& landmark
         for (const auto idx : indices) {
             const auto& keypt = keyfrm->undist_keypts_.at(idx);
 
-            const auto scale_level = static_cast<unsigned int>(keypt.octave);
+            const auto scale_level = static_cast<unsigned int>(keypt.get_cv_keypoint().octave);
 
             // TODO: keyfrm->get_keypts_in_cell()でスケールの判断をする
             if (scale_level < pred_scale_level - 1 || pred_scale_level < scale_level) {
@@ -197,8 +198,8 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const T& landmark
 
             if (keyfrm->stereo_x_right_.at(idx) >= 0) {
                 // stereo matchが存在する場合は自由度3の再投影誤差を計算する
-                const auto e_x = reproj(0) - keypt.pt.x;
-                const auto e_y = reproj(1) - keypt.pt.y;
+                const auto e_x = reproj(0) - keypt.get_cv_keypoint().pt.x;
+                const auto e_y = reproj(1) - keypt.get_cv_keypoint().pt.y;
                 const auto e_x_right = x_right - keyfrm->stereo_x_right_.at(idx);
                 const auto reproj_error_sq = e_x * e_x + e_y * e_y + e_x_right * e_x_right;
 
@@ -210,8 +211,8 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const T& landmark
             }
             else {
                 // stereo matchが存在しない場合は自由度2の再投影誤差を計算する
-                const auto e_x = reproj(0) - keypt.pt.x;
-                const auto e_y = reproj(1) - keypt.pt.y;
+                const auto e_x = reproj(0) - keypt.get_cv_keypoint().pt.x;
+                const auto e_y = reproj(1) - keypt.get_cv_keypoint().pt.y;
                 const auto reproj_error_sq = e_x * e_x + e_y * e_y;
 
                 // 自由度n=2

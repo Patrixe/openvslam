@@ -88,7 +88,7 @@ image_bounds perspective::compute_image_bounds() const {
 
         data::keypoint_container corner_keypoints;
         undistort_keypoints(corners, corner_keypoints);
-        std::vector<cv::KeyPoint> undist_corners = corner_keypoints.get_cv_keypoints();
+        std::vector<cv::KeyPoint> undist_corners = corner_keypoints.get_all_cv_keypoints();
 
         return image_bounds{std::min(undist_corners.at(0).pt.x, undist_corners.at(2).pt.x),
                             std::max(undist_corners.at(1).pt.x, undist_corners.at(3).pt.x),
@@ -128,7 +128,7 @@ void perspective::undistort_keypoints(data::keypoint_container &dist_keypts, dat
     }
 }
 
-void perspective::convert_keypoints_to_bearings(data::keypoint_container &undist_keypts, eigen_alloc_vector<Vec3_t>& bearings) const {
+void perspective::convert_keypoints_to_bearings(const data::keypoint_container &undist_keypts, eigen_alloc_vector<Vec3_t>& bearings) const {
     bearings.resize(undist_keypts.size());
     for (unsigned long idx = 0; idx < undist_keypts.size(); ++idx) {
         const auto x_normalized = (undist_keypts.at(idx).get_cv_keypoint().pt.x - cx_) / fx_;

@@ -1,4 +1,5 @@
 #include "openvslam/data/frame.h"
+#include "openvslam/data/keypoint.h"
 #include "openvslam/initialize/base.h"
 #include "openvslam/solve/triangulator.h"
 
@@ -153,7 +154,7 @@ unsigned int base::check_pose(const Mat33_t& rot_ref_to_cur, const Vec3_t& trans
             continue;
         }
 
-        const float ref_reproj_err_sq = (reproj_in_ref - ref_undist_keypt.pt).squaredNorm();
+        const float ref_reproj_err_sq = (reproj_in_ref - ref_undist_keypt.get_cv_keypoint().pt).squaredNorm();
         if (reproj_err_thr_sq < ref_reproj_err_sq) {
             continue;
         }
@@ -166,7 +167,7 @@ unsigned int base::check_pose(const Mat33_t& rot_ref_to_cur, const Vec3_t& trans
         if (!parallax_is_small && !is_valid_cur) {
             continue;
         }
-        const float cur_reproj_err_sq = (reproj_in_cur - cur_undist_keypt.pt).squaredNorm();
+        const float cur_reproj_err_sq = (reproj_in_cur - cur_undist_keypt.get_cv_keypoint().pt).squaredNorm();
         if (reproj_err_thr_sq < cur_reproj_err_sq) {
             continue;
         }

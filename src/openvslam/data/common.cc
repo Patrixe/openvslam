@@ -25,46 +25,50 @@ Vec3_t convert_json_to_translation(const nlohmann::json& json_trans_cw) {
     return trans_cw;
 }
 
-nlohmann::json convert_keypoints_to_json(const std::vector<cv::KeyPoint>& keypts) {
+nlohmann::json convert_keypoints_to_json(const keypoint_container& keypts) {
     std::vector<nlohmann::json> json_keypts(keypts.size());
     for (unsigned int idx = 0; idx < keypts.size(); ++idx) {
-        json_keypts.at(idx) = {{"pt", {keypts.at(idx).pt.x, keypts.at(idx).pt.y}},
-                               {"ang", keypts.at(idx).angle},
-                               {"oct", static_cast<unsigned int>(keypts.at(idx).octave)}};
+        json_keypts.at(idx) = {{"pt", {keypts.at(idx).get_cv_keypoint().pt.x, keypts.at(idx).get_cv_keypoint().pt.y}},
+                               {"ang", keypts.at(idx).get_cv_keypoint().angle},
+                               {"oct", static_cast<unsigned int>(keypts.at(idx).get_cv_keypoint().octave)}};
     }
     return std::move(json_keypts);
 }
 
-std::vector<cv::KeyPoint> convert_json_to_keypoints(const nlohmann::json& json_keypts) {
-    std::vector<cv::KeyPoint> keypts(json_keypts.size());
+keypoint_container convert_json_to_keypoints(const nlohmann::json& json_keypts) {
+    keypoint_container keypts;
+    keypts.reserve(json_keypts.size());
+
     for (unsigned int idx = 0; idx < json_keypts.size(); ++idx) {
         const auto& json_keypt = json_keypts.at(idx);
-        keypts.at(idx) = cv::KeyPoint(json_keypt.at("pt").at(0).get<float>(),
+        keypts.at(idx) = keypoint(cv::KeyPoint(json_keypt.at("pt").at(0).get<float>(),
                                       json_keypt.at("pt").at(1).get<float>(),
                                       0,
                                       json_keypt.at("ang").get<float>(),
                                       0,
                                       json_keypt.at("oct").get<unsigned int>(),
-                                      -1);
+                                      -1)
+                                  );
     }
     return keypts;
 }
 
-nlohmann::json convert_undistorted_to_json(const std::vector<cv::KeyPoint>& undist_keypts) {
-    std::vector<nlohmann::json> json_undist_keypts(undist_keypts.size());
+nlohmann::json convert_undistorted_to_json(const keypoint_container& undist_keypts) {
+    std::vector<nlohmann::json> json_undist_keypts;
+    json_undist_keypts.reserve(undist_keypts.size());
     for (unsigned int idx = 0; idx < undist_keypts.size(); ++idx) {
-        json_undist_keypts.at(idx) = {undist_keypts.at(idx).pt.x, undist_keypts.at(idx).pt.y};
+        json_undist_keypts.at(idx) = {undist_keypts.at(idx).get_cv_keypoint().pt.x, undist_keypts.at(idx).get_cv_keypoint().pt.y};
     }
     return json_undist_keypts;
 }
 
-std::vector<cv::KeyPoint> convert_json_to_undistorted(const nlohmann::json& json_undist_keypts, const std::vector<cv::KeyPoint>& keypts) {
-    auto undist_keypts = (keypts.empty() ? std::vector<cv::KeyPoint>(json_undist_keypts.size()) : keypts);
+keypoint_container convert_json_to_undistorted(const nlohmann::json& json_undist_keypts) {
+    auto undist_keypts = keypoint_container(json_undist_keypts.size());
     assert(undist_keypts.size() == json_undist_keypts.size());
     for (unsigned int idx = 0; idx < json_undist_keypts.size(); ++idx) {
         const auto& json_undist_keypt = json_undist_keypts.at(idx);
-        undist_keypts.at(idx).pt.x = json_undist_keypt.at(0).get<float>();
-        undist_keypts.at(idx).pt.y = json_undist_keypt.at(1).get<float>();
+        undist_keypts.at(idx).get_cv_keypoint().pt.x = json_undist_keypt.at(0).get<float>();
+        undist_keypts.at(idx).get_cv_keypoint().pt.y = json_undist_keypt.at(1).get<float>();
     }
     return undist_keypts;
 }

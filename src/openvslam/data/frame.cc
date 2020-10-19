@@ -47,7 +47,7 @@ frame::frame(const cv::Mat& img_gray, const double timestamp,
     depths_ = std::vector<float>(num_keypts_, -1);
 
     // Convert to bearing vector
-    camera->convert_keypoints_to_bearings(undist_keypts_, bearings_);
+    camera->convert_keypoints_to_bearings(undist_keypts_);
 
     // Initialize association with 3D points
     landmarks_ = std::vector<landmark*>(num_keypts_, nullptr);
@@ -81,13 +81,13 @@ frame::frame(const cv::Mat& left_img_gray, const cv::Mat& right_img_gray, const 
 
     // Estimate depth with stereo match
     match::stereo stereo_matcher(extractor_left->image_pyramid_, extractor_right_->image_pyramid_,
-                                 keypts_.get_all_cv_keypoints(), keypts_right_.get_all_cv_keypoints(), descriptors_, descriptors_right_,
+                                 keypts_, keypts_right_,
                                  scale_factors_, inv_scale_factors_,
                                  camera->focal_x_baseline_, camera_->true_baseline_);
     stereo_matcher.compute(stereo_x_right_, depths_);
 
     // Convert to bearing vector
-    camera->convert_keypoints_to_bearings(undist_keypts_, bearings_);
+    camera->convert_keypoints_to_bearings(undist_keypts_);
 
     // Initialize association with 3D points
     landmarks_ = std::vector<landmark*>(num_keypts_, nullptr);
@@ -120,7 +120,7 @@ frame::frame(const cv::Mat& img_gray, const cv::Mat& img_depth, const double tim
     compute_stereo_from_depth(img_depth);
 
     // Convert to bearing vector
-    camera->convert_keypoints_to_bearings(undist_keypts_, bearings_);
+    camera->convert_keypoints_to_bearings(undist_keypts_);
 
     // Initialize association with 3D points
     landmarks_ = std::vector<landmark*>(num_keypts_, nullptr);
@@ -168,7 +168,7 @@ void frame::update_orb_info() {
 void frame::compute_bow() {
     if (bow_vec_.empty()) {
 #ifdef USE_DBOW2
-        bow_vocab_->transform(util::converter::to_desc_vec(descriptors_), bow_vec_, bow_feat_vec_, 4);
+        bow_vocab_->transform(util::converter::to_desc_vec(undist_keypts_), bow_vec_, bow_feat_vec_, 4);
 #else
         bow_vocab_->transform(descriptors_, 4, bow_vec_, bow_feat_vec_);
 #endif
@@ -201,7 +201,8 @@ bool frame::can_observe(landmark* lm, const float ray_cos_thr,
 }
 
 std::vector<unsigned int> frame::get_keypoints_in_cell(const float ref_x, const float ref_y, const float margin, const int min_level, const int max_level) const {
-    return data::get_keypoints_in_cell(camera_, undist_keypts_, keypt_indices_in_cells_, ref_x, ref_y, margin, min_level, max_level);
+    return data::get_keypoints_in_cell(camera_, undist_keypts_, keypt_indices_in_cells_, ref_x, ref_y, margin,
+                                       min_level, max_level, true);
 }
 
 Vec3_t frame::triangulate_stereo(const unsigned int idx) {
@@ -255,11 +256,11 @@ Vec3_t frame::triangulate_stereo(const unsigned int idx) {
 void frame::extract_orb(const cv::Mat& img, const cv::Mat& mask, const image_side& img_side) {
     switch (img_side) {
         case image_side::Left: {
-            extractor_->extract(img, mask, keypts_, descriptors_);
+            extractor_->extract(img, mask, keypts_);
             break;
         }
         case image_side::Right: {
-            extractor_right_->extract(img, mask, keypts_right_, descriptors_right_);
+            extractor_right_->extract(img, mask, keypts_right_);
             break;
         }
     }

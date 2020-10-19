@@ -1,16 +1,15 @@
 #include "openvslam/match/stereo.h"
+#include "openvslam/data/keypoint.h"
 
 namespace openvslam {
 namespace match {
 
 stereo::stereo(const std::vector<cv::Mat>& left_image_pyramid, const std::vector<cv::Mat>& right_image_pyramid,
-               const std::vector<cv::KeyPoint>& keypts_left, const std::vector<cv::KeyPoint>& keypts_right,
-               const cv::Mat& descs_left, const cv::Mat& descs_right,
+               const data::keypoint_container &keypts_left, const data::keypoint_container &keypts_right,
                const std::vector<float>& scale_factors, const std::vector<float>& inv_scale_factors,
                const float focal_x_baseline, const float true_baseline)
     : left_image_pyramid_(left_image_pyramid), right_image_pyramid_(right_image_pyramid),
       num_keypts_(keypts_left.size()), keypts_left_(keypts_left), keypts_right_(keypts_right),
-      descs_left_(descs_left), descs_right_(descs_right),
       scale_factors_(scale_factors), inv_scale_factors_(inv_scale_factors),
       focal_x_baseline_(focal_x_baseline), true_baseline_(true_baseline),
       min_disp_(0.0f), max_disp_(focal_x_baseline_ / true_baseline_) {}
@@ -30,9 +29,9 @@ void stereo::compute(std::vector<float>& stereo_x_right, std::vector<float>& dep
 #endif
     for (unsigned int idx_left = 0; idx_left < num_keypts_; ++idx_left) {
         const auto& keypt_left = keypts_left_.at(idx_left);
-        const auto scale_level_left = keypt_left.octave;
-        const float y_left = keypt_left.pt.y;
-        const float x_left = keypt_left.pt.x;
+        const auto scale_level_left = keypt_left.get_cv_keypoint().octave;
+        const float y_left = keypt_left.get_cv_keypoint().pt.y;
+        const float x_left = keypt_left.get_cv_keypoint().pt.x;
 
         // 左画像の特徴点と同じ高さにある右画像の特徴点のindexを取得 -> マッチング候補
         const auto& candidate_indices_right = indices_right_in_row.at(y_left);
@@ -62,7 +61,7 @@ void stereo::compute(std::vector<float>& stereo_x_right, std::vector<float>& dep
         float best_x_right = -1.0f;
         float best_disp = -1.0f;
         float best_correlation = UINT_MAX;
-        const auto is_valid = compute_subpixel_disparity(keypt_left, keypt_right, best_x_right, best_disp, best_correlation);
+        const auto is_valid = compute_subpixel_disparity(keypt_left.get_cv_keypoint(), keypt_right.get_cv_keypoint(), best_x_right, best_disp, best_correlation);
         // 見つからなければ破棄
         if (!is_valid) {
             continue;
@@ -125,9 +124,9 @@ std::vector<std::vector<unsigned int>> stereo::get_right_keypoint_indices_in_eac
     for (unsigned int idx_right = 0; idx_right < num_keypts_right; ++idx_right) {
         // 右画像の特徴点のy座標を取得
         const auto& keypt_right = keypts_right_.at(idx_right);
-        const float y_right = keypt_right.pt.y;
+        const float y_right = keypt_right.get_cv_keypoint().pt.y;
         // スケールに応じて座標の不定性を設定
-        const float r = margin * scale_factors_.at(keypts_right_.at(idx_right).octave);
+        const float r = margin * scale_factors_.at(keypts_right_.at(idx_right).get_cv_keypoint().octave);
         // 上端と下端を計算
         const int max_r = cvCeil(y_right + r);
         const int min_r = cvFloor(y_right - r);
@@ -148,25 +147,25 @@ void stereo::find_closest_keypoints_in_stereo(const unsigned int idx_left, const
     best_idx_right = 0;
     best_hamm_dist = hamm_dist_thr_;
 
-    const cv::Mat& desc_left = descs_left_.row(idx_left);
+    const cv::Mat& desc_left = keypts_left_.at(idx_left).get_orb_descriptor_as_cv_mat();
 
     // 左画像の特徴点と右画像の各特徴点のハミング距離を計算する
     // 左画像の特徴点に対して，一番近い右画像の特徴点indexを取得する -> best_idx_right
     for (const auto idx_right : candidate_indices_right) {
         const auto& keypt_right = keypts_right_.at(idx_right);
         // ORBスケールが大きく異なる場合は破棄
-        if (keypt_right.octave < scale_level_left - 1 || keypt_right.octave > scale_level_left + 1) {
+        if (keypt_right.get_cv_keypoint().octave < scale_level_left - 1 || keypt_right.get_cv_keypoint().octave > scale_level_left + 1) {
             continue;
         }
 
         // 視差をチェックして許容範囲外だったら破棄
-        const float x_right = keypt_right.pt.x;
+        const float x_right = keypt_right.get_cv_keypoint().pt.x;
         if (x_right < min_x_right || max_x_right < x_right) {
             continue;
         }
 
         // ハミング距離を計算
-        const auto& desc_right = descs_right_.row(idx_right);
+        const auto& desc_right = keypts_right_.at(idx_right).get_orb_descriptor_as_cv_mat();
         const unsigned int hamm_dist = match::compute_descriptor_distance_32(desc_left, desc_right);
 
         if (hamm_dist < best_hamm_dist) {

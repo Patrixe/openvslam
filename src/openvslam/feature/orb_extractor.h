@@ -28,7 +28,7 @@ public:
 
     //! Extract keypoints and each descriptor of them
     void extract(const cv::_InputArray& in_image, const cv::_InputArray& in_image_mask,
-                 data::keypoint_container & keypts, const cv::_OutputArray& out_descriptors);
+                 data::keypoint_container & keypts);
 
     //! Get the maximum number of keypoints
     unsigned int get_max_num_keypoints() const;
@@ -117,10 +117,10 @@ protected:
     float ic_angle(const cv::Mat& image, const cv::Point2f& point) const;
 
     //! Compute orb descriptors for all keypoint
-    void compute_orb_descriptors(const cv::Mat& image, const std::vector<cv::KeyPoint>& keypts, cv::Mat& descriptors) const;
+    void compute_orb_descriptors(const cv::Mat &image, data::keypoint_container &keypts) const;
 
     //! Compute orb descriptor of a keypoint
-    static void compute_orb_descriptor(const cv::KeyPoint& keypt, const cv::Mat& image, uchar* desc) ;
+    static void compute_orb_descriptor(data::keypoint &keypt, const cv::Mat &image);
 
     //! parameters for ORB extraction
     orb_params orb_params_;

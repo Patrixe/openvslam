@@ -67,7 +67,7 @@ namespace openvslam {
         }
 
         void orb_extractor::extract(const cv::_InputArray &in_image, const cv::_InputArray &in_image_mask,
-                                    data::keypoint_container &keypts, const cv::_OutputArray &out_descriptors) {
+                                    data::keypoint_container &keypts) {
             if (in_image.empty()) {
                 return;
             }
@@ -102,17 +102,9 @@ namespace openvslam {
                 compute_fast_keypoints(all_keypts, cv::Mat());
             }
 
-            cv::Mat descriptors;
-
             unsigned int num_keypts = 0;
             for (unsigned int level = 0; level < orb_params_.num_levels_; ++level) {
                 num_keypts += all_keypts.at(level).size();
-            }
-            if (num_keypts == 0) {
-                out_descriptors.release();
-            } else {
-                out_descriptors.create(num_keypts, 32, CV_8U);
-                descriptors = out_descriptors.getMat();
             }
 
             keypts.clear();
@@ -129,8 +121,7 @@ namespace openvslam {
 
                 cv::Mat blurred_image = image_pyramid_.at(level).clone();
                 cv::GaussianBlur(blurred_image, blurred_image, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
-                cv::Mat descriptors_at_level = descriptors.rowRange(offset, offset + num_keypts_at_level);
-                compute_orb_descriptors(blurred_image, keypts_at_level.get_all_cv_keypoints(), descriptors_at_level);
+                compute_orb_descriptors(blurred_image, keypts_at_level);
 
                 offset += num_keypts_at_level;
 
@@ -636,21 +627,18 @@ namespace openvslam {
             return cv::fastAtan2(m_01, m_10);
         }
 
-        void orb_extractor::compute_orb_descriptors(const cv::Mat &image, const std::vector<cv::KeyPoint> &keypts,
-                                                    cv::Mat &descriptors) const {
-            descriptors = cv::Mat::zeros(keypts.size(), 32, CV_8UC1);
-
+        void orb_extractor::compute_orb_descriptors(const cv::Mat &image, data::keypoint_container &keypts) const {
             for (unsigned int i = 0; i < keypts.size(); ++i) {
-                compute_orb_descriptor(keypts.at(i), image, descriptors.ptr(i));
+                compute_orb_descriptor(keypts.at(i), image);
             }
         }
 
-        void orb_extractor::compute_orb_descriptor(const cv::KeyPoint &keypt, const cv::Mat &image, uchar *desc) {
-            const float angle = keypt.angle * M_PI / 180.0;
+        void orb_extractor::compute_orb_descriptor(data::keypoint &keypt, const cv::Mat &image) {
+            const float angle = keypt.get_cv_keypoint().angle * M_PI / 180.0;
             const float cos_angle = util::cos(angle);
             const float sin_angle = util::sin(angle);
 
-            const uchar *const center = &image.at<uchar>(cvRound(keypt.pt.y), cvRound(keypt.pt.x));
+            const uchar *const center = &image.at<uchar>(cvRound(keypt.get_cv_keypoint().pt.y), cvRound(keypt.get_cv_keypoint().pt.x));
             const auto step = static_cast<int>(image.step);
 
 #ifdef USE_SSE_ORB
@@ -701,7 +689,7 @@ namespace openvslam {
                 val |= COMPARE_ORB_POINTS(i * interval + 20) << 5;
                 val |= COMPARE_ORB_POINTS(i * interval + 24) << 6;
                 val |= COMPARE_ORB_POINTS(i * interval + 28) << 7;
-                desc[i] = static_cast<uchar>(val);
+                keypt.get_orb_descriptor()->data()[i] = static_cast<uchar>(val);
             }
 
 #undef GET_VALUE

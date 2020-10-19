@@ -50,7 +50,7 @@ add_library(${PROJECT_NAME}
             ${CMAKE_CURRENT_SOURCE_DIR}/system.cc
             ${CMAKE_CURRENT_SOURCE_DIR}/tracking_module.cc
             ${CMAKE_CURRENT_SOURCE_DIR}/mapping_module.cc
-            ${CMAKE_CURRENT_SOURCE_DIR}/global_optimization_module.cc segmentation/segmentation_config.cpp segmentation/segmentation_config.h data/segmentation_frame.cpp data/segmentation_frame.h segmentation/segmentation_system.cpp segmentation/segmentation_system.h feature/segmented_orb_extractor.cpp feature/segmented_orb_extractor.h data/keypoint.h)
+            ${CMAKE_CURRENT_SOURCE_DIR}/global_optimization_module.cc segmentation/segmentation_config.cpp segmentation/segmentation_config.h data/segmentation_frame.cpp data/segmentation_frame.h segmentation/segmentation_system.cpp segmentation/segmentation_system.h feature/segmented_orb_extractor.cpp feature/segmented_orb_extractor.h data/keypoint.h data/keypoint.cpp)
 
 # Set output directory of the library
 set_target_properties(${PROJECT_NAME} PROPERTIES

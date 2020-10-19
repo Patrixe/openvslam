@@ -53,7 +53,7 @@ unsigned int bow_tree::match_frame_and_keyframe(data::keyframe* keyfrm, data::fr
                     continue;
                 }
 
-                const auto& keyfrm_desc = keyfrm->descriptors_.row(keyfrm_idx);
+                const auto& keyfrm_desc = keyfrm->undist_keypts_.at(keyfrm_idx).get_orb_descriptor_as_cv_mat();
 
                 unsigned int best_hamm_dist = MAX_HAMMING_DIST;
                 int best_frm_idx = -1;
@@ -64,7 +64,7 @@ unsigned int bow_tree::match_frame_and_keyframe(data::keyframe* keyfrm, data::fr
                         continue;
                     }
 
-                    const auto& frm_desc = frm.descriptors_.row(frm_idx);
+                    const auto& frm_desc = frm.undist_keypts_.at(frm_idx).get_orb_descriptor_as_cv_mat();
 
                     const auto hamm_dist = compute_descriptor_distance_32(keyfrm_desc, frm_desc);
 
@@ -166,7 +166,7 @@ unsigned int bow_tree::match_keyframes(data::keyframe* keyfrm_1, data::keyframe*
                     continue;
                 }
 
-                const auto& desc_1 = keyfrm_1->descriptors_.row(idx_1);
+                const auto& desc_1 = keyfrm_1->undist_keypts_.at(idx_1).get_orb_descriptor_as_cv_mat();
 
                 unsigned int best_hamm_dist = MAX_HAMMING_DIST;
                 int best_idx_2 = -1;
@@ -186,7 +186,7 @@ unsigned int bow_tree::match_keyframes(data::keyframe* keyfrm_1, data::keyframe*
                         continue;
                     }
 
-                    const auto& desc_2 = keyfrm_2->descriptors_.row(idx_2);
+                    const auto& desc_2 = keyfrm_2->undist_keypts_.at(idx_2).get_orb_descriptor_as_cv_mat();
 
                     const auto hamm_dist = compute_descriptor_distance_32(desc_1, desc_2);
 

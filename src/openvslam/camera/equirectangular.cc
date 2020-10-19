@@ -43,16 +43,17 @@ void equirectangular::undistort_keypoints(data::keypoint_container &dist_keypts,
     undist_keypts = dist_keypts;
 }
 
-void equirectangular::convert_keypoints_to_bearings(const data::keypoint_container &undist_keypts, eigen_alloc_vector<Vec3_t>& bearings) const {
-    bearings.resize(undist_keypts.size());
+void equirectangular::convert_keypoints_to_bearings(data::keypoint_container &undist_keypts) const {
     for (unsigned int idx = 0; idx < undist_keypts.size(); ++idx) {
         // convert to unit polar coordinates
         const double lon = (undist_keypts.at(idx).get_cv_keypoint().pt.x / cols_ - 0.5) * (2 * M_PI);
         const double lat = -(undist_keypts.at(idx).get_cv_keypoint().pt.y / rows_ - 0.5) * M_PI;
         // convert to equirectangular coordinates
-        bearings.at(idx)(0) = std::cos(lat) * std::sin(lon);
-        bearings.at(idx)(1) = -std::sin(lat);
-        bearings.at(idx)(2) = std::cos(lat) * std::cos(lon);
+        Vec3_t bearing;
+        bearing(0) = std::cos(lat) * std::sin(lon);
+        bearing(1) = -std::sin(lat);
+        bearing(2) = std::cos(lat) * std::cos(lon);
+        undist_keypts.at(idx).set_bearing(bearing);
     }
 }
 

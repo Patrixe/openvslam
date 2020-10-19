@@ -88,7 +88,8 @@ unsigned int fuse::detect_duplication(data::keyframe* keyfrm, const Mat44_t& Sim
                 continue;
             }
 
-            const auto& desc = keyfrm->descriptors_.row(idx);
+            // TODO pali: Check this. Quick fixed for compilation.
+            const auto& desc = keyfrm->undist_keypts_.at(idx).get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 
@@ -222,7 +223,8 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const T& landmark
                 }
             }
 
-            const auto& desc = keyfrm->descriptors_.row(idx);
+            // TODO pali: Check this. Quick fixed for compilation.
+            const auto& desc = keyfrm->undist_keypts_.at(idx).get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 

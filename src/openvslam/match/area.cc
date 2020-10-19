@@ -6,20 +6,23 @@
 namespace openvslam {
 namespace match {
 
-unsigned int area::match_in_consistent_area(data::frame& frm_1, data::frame& frm_2, std::vector<cv::Point2f>& prev_matched_pts,
-                                            std::vector<int>& matched_indices_2_in_frm_1, int margin) {
+unsigned int area::match_in_consistent_area(data::frame &frm_1, data::frame &frm_2,
+                                            std::vector<cv::Point2f> &prev_matched_pts,
+                                            std::vector<int> &matched_indices_2_in_frm_1, int margin,
+                                            const std::vector<cv::KeyPoint> &frame_1_slam_cv_points,
+                                            const std::vector<cv::KeyPoint> &frame_2_slam_cv_points) {
     unsigned int num_matches = 0;
 
     angle_checker<int> angle_checker;
 
-    matched_indices_2_in_frm_1 = std::vector<int>(frm_1.undist_keypts_.size(), -1);
+    matched_indices_2_in_frm_1 = std::vector<int>(frame_1_slam_cv_points.size(), -1);
+    std::vector<unsigned int> matched_dists_in_frm_2(frame_2_slam_cv_points.size(), MAX_HAMMING_DIST);
+    std::vector<int> matched_indices_1_in_frm_2(frame_2_slam_cv_points.size(), -1);
 
-    std::vector<unsigned int> matched_dists_in_frm_2(frm_2.undist_keypts_.size(), MAX_HAMMING_DIST);
-    std::vector<int> matched_indices_1_in_frm_2(frm_2.undist_keypts_.size(), -1);
-
-    for (unsigned int idx_1 = 0; idx_1 < frm_1.undist_keypts_.size(); ++idx_1) {
-        const auto& undist_keypt_1 = frm_1.undist_keypts_.at(idx_1);
-        const auto scale_level_1 = undist_keypt_1.get_cv_keypoint().octave;
+    // TODO pali: Ids are not correct here, since the keypoints have been filtered before!
+    for (unsigned int idx_1 = 0; idx_1 < frame_1_slam_cv_points.size(); ++idx_1) {
+        const auto& undist_keypt_1 = frame_1_slam_cv_points.at(idx_1);
+        const auto scale_level_1 = undist_keypt_1.octave;
 
         // 第0スケールの特徴点のみを用いる
         if (0 < scale_level_1) {
@@ -33,14 +36,15 @@ unsigned int area::match_in_consistent_area(data::frame& frm_1, data::frame& frm
             continue;
         }
 
-        const auto& desc_1 = frm_1.descriptors_.row(idx_1);
+        const auto& desc_1 = frm_1.undist_keypts_.at(idx_1).get_orb_descriptor_as_cv_mat();
 
         unsigned int best_hamm_dist = MAX_HAMMING_DIST;
         unsigned int second_best_hamm_dist = MAX_HAMMING_DIST;
         int best_idx_2 = -1;
 
         for (const auto idx_2 : indices) {
-            const auto& desc_2 = frm_2.descriptors_.row(idx_2);
+            // idx_2 can be larger than allowed, due to unstable keypoint classification
+            const auto& desc_2 = frm_2.undist_keypts_.at(idx_2).get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(desc_1, desc_2);
 
@@ -87,7 +91,7 @@ unsigned int area::match_in_consistent_area(data::frame& frm_1, data::frame& frm
 
         if (check_orientation_) {
             const auto delta_angle
-                = frm_1.undist_keypts_.at(idx_1).get_cv_keypoint().angle - frm_2.undist_keypts_.at(best_idx_2).get_cv_keypoint().angle;
+                = frame_1_slam_cv_points.at(idx_1).angle - frame_2_slam_cv_points.at(best_idx_2).angle;
             angle_checker.append_delta_angle(delta_angle, idx_1);
         }
     }
@@ -105,7 +109,7 @@ unsigned int area::match_in_consistent_area(data::frame& frm_1, data::frame& frm
     // previous matchesを更新する
     for (unsigned int idx_1 = 0; idx_1 < matched_indices_2_in_frm_1.size(); ++idx_1) {
         if (0 <= matched_indices_2_in_frm_1.at(idx_1)) {
-            prev_matched_pts.at(idx_1) = frm_2.undist_keypts_.at(matched_indices_2_in_frm_1.at(idx_1)).get_cv_keypoint().pt;
+            prev_matched_pts.at(idx_1) = frame_2_slam_cv_points.at(matched_indices_2_in_frm_1.at(idx_1)).pt;
         }
     }
 

@@ -57,7 +57,7 @@ public:
         return Vec3_t{x_normalized / l2_norm, y_normalized / l2_norm, 1.0 / l2_norm};
     }
 
-    void convert_keypoints_to_bearings(const data::keypoint_container &undist_keypt, eigen_alloc_vector<Vec3_t>& bearings) const override final;
+    void convert_keypoints_to_bearings(data::keypoint_container &undist_keypts) const override final;
 
     cv::KeyPoint convert_bearing_to_keypoint(const Vec3_t& bearing) const override final {
         const auto x_normalized = bearing(0) / bearing(2);

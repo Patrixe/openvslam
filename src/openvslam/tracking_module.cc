@@ -107,7 +107,7 @@ namespace openvslam {
     }
 
     std::vector<int> tracking_module::get_initial_matches() const {
-        return initializer_.get_initial_matches();
+        return initializer_.get_initial_slam_matches();
     }
 
     Mat44_t tracking_module::track_monocular_image(const cv::Mat &img, const double timestamp, const cv::Mat &mask) {

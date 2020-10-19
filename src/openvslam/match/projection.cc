@@ -23,6 +23,7 @@ unsigned int projection::match_frame_and_landmarks(data::frame& frm, const std::
         const auto pred_scale_level = local_lm->scale_level_in_tracking_;
 
         // 3次元点を再投影した点が存在するcellの特徴点を取得
+        // TODO pali: This might need adjustment regarding the ids that are returned.
         const auto indices_in_cell = frm.get_keypoints_in_cell(local_lm->reproj_in_tracking_(0), local_lm->reproj_in_tracking_(1),
                                                                margin * frm.scale_factors_.at(pred_scale_level),
                                                                pred_scale_level - 1, pred_scale_level);
@@ -38,6 +39,7 @@ unsigned int projection::match_frame_and_landmarks(data::frame& frm, const std::
         int second_best_scale_level = -1;
         int best_idx = -1;
 
+        // TODO pali: Check if the logic in here is coherent with the split of points (and subsequently ids which are simply counted up)
         for (const auto idx : indices_in_cell) {
             if (frm.landmarks_.at(idx) && frm.landmarks_.at(idx)->has_observation()) {
                 continue;
@@ -50,7 +52,8 @@ unsigned int projection::match_frame_and_landmarks(data::frame& frm, const std::
                 }
             }
 
-            const cv::Mat& desc = frm.descriptors_.row(idx);
+            // TODO pali: check this, just quick fixed for compilation
+            const cv::Mat& desc = frm.undist_keypts_.at(idx).get_orb_descriptor_as_cv_mat();
 
             const auto dist = compute_descriptor_distance_32(lm_desc, desc);
 
@@ -173,7 +176,8 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
                 }
             }
 
-            const auto& desc = curr_frm.descriptors_.row(curr_idx);
+            // TODO pali: check this. Just quick fixed for compilation
+            const auto& desc = curr_frm.undist_keypts_.at(curr_idx).get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 
@@ -277,7 +281,8 @@ unsigned int projection::match_frame_and_keyframe(data::frame& curr_frm, data::k
                 continue;
             }
 
-            const auto& desc = curr_frm.descriptors_.row(curr_idx);
+            // TODO pali: Check this. Just quick fixed for compilation.
+            const auto& desc = curr_frm.undist_keypts_.at(curr_idx).get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 
@@ -392,7 +397,7 @@ unsigned int projection::match_by_Sim3_transform(data::keyframe* keyfrm, const M
                 continue;
             }
 
-            const auto& desc = keyfrm->descriptors_.row(idx);
+            const auto& desc = keyfrm->undist_keypts_.at(idx).get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 
@@ -517,7 +522,7 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
                     continue;
                 }
 
-                const auto& desc = keyfrm_2->descriptors_.row(idx_2);
+                const auto& desc = keyfrm_2->undist_keypts_.at(idx_2).get_orb_descriptor_as_cv_mat();
 
                 const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 
@@ -600,7 +605,7 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
                     continue;
                 }
 
-                const auto& desc = keyfrm_1->descriptors_.row(idx_1);
+                const auto& desc = keyfrm_1->undist_keypts_.at(idx_1).get_orb_descriptor_as_cv_mat();
 
                 const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 

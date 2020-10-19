@@ -18,8 +18,11 @@ public:
 
     ~area() final = default;
 
-    unsigned int match_in_consistent_area(data::frame& frm_1, data::frame& frm_2, std::vector<cv::Point2f>& prev_matched_pts,
-                                          std::vector<int>& matched_indices_2_in_frm_1, int margin = 10);
+    unsigned int match_in_consistent_area(data::frame &frm_1, data::frame &frm_2,
+                                          std::vector<cv::Point2f> &prev_matched_pts,
+                                          std::vector<int> &matched_indices_2_in_frm_1, int margin,
+                                          const std::vector<cv::KeyPoint> &frame_1_slam_cv_points,
+                                          const std::vector<cv::KeyPoint> &frame_2_slam_cv_points);
 };
 
 } // namespace match

@@ -232,12 +232,10 @@ void map_database::register_keyframe(camera_database* cam_db, bow_vocabulary* bo
     assert(keypts.size() == num_keypts);
     // undist_keypts
     const auto json_undist_keypts = json_keyfrm.at("undists");
-    const auto undist_keypts = convert_json_to_undistorted(json_undist_keypts);
+    auto undist_keypts = convert_json_to_undistorted(json_undist_keypts);
     assert(undist_keypts.size() == num_keypts);
     // bearings
-    auto bearings = eigen_alloc_vector<Vec3_t>(num_keypts);
-    assert(bearings.size() == num_keypts);
-    camera->convert_keypoints_to_bearings(undist_keypts, bearings);
+    camera->convert_keypoints_to_bearings(undist_keypts);
     // stereo_x_right
     const auto stereo_x_right = json_keyfrm.at("x_rights").get<std::vector<float>>();
     assert(stereo_x_right.size() == num_keypts);
@@ -255,7 +253,7 @@ void map_database::register_keyframe(camera_database* cam_db, bow_vocabulary* bo
 
     // Construct a new object
     auto keyfrm = new data::keyframe(id, src_frm_id, timestamp, cam_pose_cw, camera, depth_thr,
-                                     num_keypts, keypts, undist_keypts, bearings, stereo_x_right, depths, descriptors,
+                                     num_keypts, keypts, undist_keypts, stereo_x_right, depths,
                                      num_scale_levels, scale_factor, bow_vocab, bow_db, this);
 
     // Append to map database

@@ -1,6 +1,7 @@
 #ifndef OPENVSLAM_MATCH_STEREO_H
 #define OPENVSLAM_MATCH_STEREO_H
 
+#include <openvslam/data/keypoint.h>
 #include "openvslam/match/base.h"
 
 namespace openvslam {
@@ -16,8 +17,7 @@ public:
     stereo() = delete;
 
     stereo(const std::vector<cv::Mat>& left_image_pyramid, const std::vector<cv::Mat>& right_image_pyramid,
-           const std::vector<cv::KeyPoint>& keypts_left, const std::vector<cv::KeyPoint>& keypts_right,
-           const cv::Mat& descs_left, const cv::Mat& descs_right,
+           const openvslam::data::keypoint_container &keypts_left, const data::keypoint_container &keypts_right,
            const std::vector<float>& scale_factors, const std::vector<float>& inv_scale_factors,
            const float focal_x_baseline, const float true_baseline);
 
@@ -71,14 +71,9 @@ private:
     //! number of keypoints
     const unsigned int num_keypts_;
     //! reference to keypoints in left image
-    const std::vector<cv::KeyPoint>& keypts_left_;
+    const data::keypoint_container& keypts_left_;
     //! reference to keypoints in right image
-    const std::vector<cv::KeyPoint>& keypts_right_;
-
-    //! reference to left descriptor
-    const cv::Mat& descs_left_;
-    //! reference to right descriptor
-    const cv::Mat& descs_right_;
+    const data::keypoint_container& keypts_right_;
 
     //! reference to scale factors
     const std::vector<float>& scale_factors_;

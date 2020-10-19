@@ -12,6 +12,7 @@
 #include "openvslam/util/converter.h"
 
 #include <nlohmann/json.hpp>
+#include <utility>
 
 namespace openvslam {
 namespace data {
@@ -24,9 +25,9 @@ keyframe::keyframe(const frame& frm, map_database* map_db, bow_database* bow_db)
       // camera parameters
       camera_(frm.camera_), depth_thr_(frm.depth_thr_),
       // constant observations
-      num_keypts_(frm.num_keypts_), keypts_(frm.keypts_), undist_keypts_(frm.undist_keypts_), bearings_(frm.bearings_),
+      num_keypts_(frm.num_keypts_), keypts_(frm.keypts_), undist_keypts_(frm.undist_keypts_),
       keypt_indices_in_cells_(frm.keypt_indices_in_cells_),
-      stereo_x_right_(frm.stereo_x_right_), depths_(frm.depths_), descriptors_(frm.descriptors_.clone()),
+      stereo_x_right_(frm.stereo_x_right_), depths_(frm.depths_),
       // BoW
       bow_vec_(frm.bow_vec_), bow_feat_vec_(frm.bow_feat_vec_),
       // covisibility graph node (connections is not assigned yet)
@@ -45,9 +46,9 @@ keyframe::keyframe(const frame& frm, map_database* map_db, bow_database* bow_db)
 
 keyframe::keyframe(const unsigned int id, const unsigned int src_frm_id, const double timestamp,
                    const Mat44_t& cam_pose_cw, camera::base* camera, const float depth_thr,
-                   const unsigned int num_keypts, const keypoint_container& keypts,
-                   const keypoint_container& undist_keypts, const eigen_alloc_vector<Vec3_t>& bearings,
-                   const std::vector<float>& stereo_x_right, const std::vector<float>& depths, const cv::Mat& descriptors,
+                   const unsigned int num_keypts, keypoint_container keypts,
+                   keypoint_container undist_keypts,
+                   const std::vector<float>& stereo_x_right, const std::vector<float>& depths,
                    const unsigned int num_scale_levels, const float scale_factor,
                    bow_vocabulary* bow_vocab, bow_database* bow_db, map_database* map_db)
     : // meta information
@@ -55,9 +56,10 @@ keyframe::keyframe(const unsigned int id, const unsigned int src_frm_id, const d
       // camera parameters
       camera_(camera), depth_thr_(depth_thr),
       // constant observations
-      num_keypts_(num_keypts), keypts_(keypts), undist_keypts_(undist_keypts), bearings_(bearings),
+      num_keypts_(num_keypts), keypts_(std::move(keypts)), undist_keypts_(std::move(undist_keypts)),
       keypt_indices_in_cells_(assign_keypoints_to_grid(camera, undist_keypts.get_all_cv_keypoints())),
-      stereo_x_right_(stereo_x_right), depths_(depths), descriptors_(descriptors.clone()),
+      stereo_x_right_(stereo_x_right), depths_(depths),
+
       // graph node (connections is not assigned yet)
       graph_node_(std::unique_ptr<graph_node>(new graph_node(this, false))),
       // ORB scale pyramid
@@ -125,7 +127,7 @@ nlohmann::json keyframe::to_json() const {
             {"undists", convert_undistorted_to_json(undist_keypts_)},
             {"x_rights", stereo_x_right_},
             {"depths", depths_},
-            {"descs", convert_descriptors_to_json(descriptors_)},
+//            {"descs", convert_descriptors_to_json(descriptors_)}, TODO pali: see implementation of function
             {"lm_ids", landmark_ids},
             // orb scale information
             {"n_scale_levels", num_scale_levels_},
@@ -182,7 +184,7 @@ Vec3_t keyframe::get_translation() const {
 void keyframe::compute_bow() {
     if (bow_vec_.empty() || bow_feat_vec_.empty()) {
 #ifdef USE_DBOW2
-        bow_vocab_->transform(util::converter::to_desc_vec(descriptors_), bow_vec_, bow_feat_vec_, 4);
+        bow_vocab_->transform(util::converter::to_desc_vec(undist_keypts_), bow_vec_, bow_feat_vec_, 4);
 #else
         bow_vocab_->transform(descriptors_, 4, bow_vec_, bow_feat_vec_);
 #endif
@@ -273,7 +275,7 @@ landmark* keyframe::get_landmark(const unsigned int idx) const {
 }
 
 std::vector<unsigned int> keyframe::get_keypoints_in_cell(const float ref_x, const float ref_y, const float margin) const {
-    return data::get_keypoints_in_cell(camera_, undist_keypts_, keypt_indices_in_cells_, ref_x, ref_y, margin);
+    return data::get_keypoints_in_cell(camera_, undist_keypts_, keypt_indices_in_cells_, ref_x, ref_y, margin, -1, -1, false);
 }
 
 Vec3_t keyframe::triangulate_stereo(const unsigned int idx) const {

@@ -153,16 +153,17 @@ void fisheye::undistort_keypoints(data::keypoint_container& dist_keypts, data::k
         undist_keypts.at(idx).get_cv_keypoint().angle = dist_keypts.at(idx).get_cv_keypoint().angle;
         undist_keypts.at(idx).get_cv_keypoint().size = dist_keypts.at(idx).get_cv_keypoint().size;
         undist_keypts.at(idx).get_cv_keypoint().octave = dist_keypts.at(idx).get_cv_keypoint().octave;
+        undist_keypts.at(idx).set_applicable_for_slam(dist_keypts.at(idx).is_applicable_for_slam());
+        undist_keypts.at(idx).set_orb_descriptor(dist_keypts.at(idx).get_orb_descriptor());
     }
 }
 
-void fisheye::convert_keypoints_to_bearings(const data::keypoint_container &undist_keypt, eigen_alloc_vector<Vec3_t>& bearings) const {
-    bearings.resize(undist_keypt.size());
-    for (unsigned long idx = 0; idx < undist_keypt.size(); ++idx) {
-        const auto x_normalized = (undist_keypt.at(idx).get_cv_keypoint().pt.x - cx_) / fx_;
-        const auto y_normalized = (undist_keypt.at(idx).get_cv_keypoint().pt.y - cy_) / fy_;
+void fisheye::convert_keypoints_to_bearings(data::keypoint_container &undist_keypts) const {
+    for (unsigned long idx = 0; idx < undist_keypts.size(); ++idx) {
+        const auto x_normalized = (undist_keypts.at(idx).get_cv_keypoint().pt.x - cx_) / fx_;
+        const auto y_normalized = (undist_keypts.at(idx).get_cv_keypoint().pt.y - cy_) / fy_;
         const auto l2_norm = std::sqrt(x_normalized * x_normalized + y_normalized * y_normalized + 1.0);
-        bearings.at(idx) = Vec3_t{x_normalized / l2_norm, y_normalized / l2_norm, 1.0 / l2_norm};
+        undist_keypts.at(idx).set_bearing(Vec3_t{x_normalized / l2_norm, y_normalized / l2_norm, 1.0 / l2_norm});
     }
 }
 

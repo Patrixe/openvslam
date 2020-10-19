@@ -41,14 +41,14 @@ keypoint_container convert_json_to_keypoints(const nlohmann::json& json_keypts) 
 
     for (unsigned int idx = 0; idx < json_keypts.size(); ++idx) {
         const auto& json_keypt = json_keypts.at(idx);
-        keypts.at(idx) = keypoint(cv::KeyPoint(json_keypt.at("pt").at(0).get<float>(),
+        keypts.push_back(keypoint(cv::KeyPoint(json_keypt.at("pt").at(0).get<float>(),
                                       json_keypt.at("pt").at(1).get<float>(),
                                       0,
                                       json_keypt.at("ang").get<float>(),
                                       0,
                                       json_keypt.at("oct").get<unsigned int>(),
                                       -1)
-                                  );
+                                  ));
     }
     return keypts;
 }
@@ -62,6 +62,7 @@ nlohmann::json convert_undistorted_to_json(const keypoint_container& undist_keyp
     return json_undist_keypts;
 }
 
+//TODO pali: Extend with segmentation information
 keypoint_container convert_json_to_undistorted(const nlohmann::json& json_undist_keypts) {
     auto undist_keypts = keypoint_container(json_undist_keypts.size());
     assert(undist_keypts.size() == json_undist_keypts.size());
@@ -73,6 +74,7 @@ keypoint_container convert_json_to_undistorted(const nlohmann::json& json_undist
     return undist_keypts;
 }
 
+//TODO pali: This needs to be addressed, merge with keypoint or keep for itself?
 nlohmann::json convert_descriptors_to_json(const cv::Mat& descriptors) {
     std::vector<nlohmann::json> json_descriptors(descriptors.rows);
     for (int idx = 0; idx < descriptors.rows; ++idx) {
@@ -129,10 +131,10 @@ auto assign_keypoints_to_grid(camera::base* camera, const std::vector<cv::KeyPoi
     return keypt_indices_in_cells;
 }
 
-std::vector<unsigned int> get_keypoints_in_cell(camera::base* camera, const keypoint_container &undist_keypts,
-                                                const std::vector<std::vector<std::vector<unsigned int>>>& keypt_indices_in_cells,
+std::vector<unsigned int> get_keypoints_in_cell(camera::base *camera, const keypoint_container &undist_keypts,
+                                                const std::vector<std::vector<std::vector<unsigned int>>> &keypt_indices_in_cells,
                                                 const float ref_x, const float ref_y, const float margin,
-                                                const int min_level, const int max_level) {
+                                                const int min_level, const int max_level, bool only_slam) {
     std::vector<unsigned int> indices;
     indices.reserve(undist_keypts.size());
 
@@ -167,6 +169,9 @@ std::vector<unsigned int> get_keypoints_in_cell(camera::base* camera, const keyp
 
             for (unsigned int idx : keypt_indices_in_cell) {
                 const auto& undist_keypt = undist_keypts.at(idx);
+                if (only_slam && !undist_keypt.is_applicable_for_slam()) {
+                    continue;
+                }
 
                 if (check_level) {
                     if (undist_keypt.get_cv_keypoint().octave < min_level) {

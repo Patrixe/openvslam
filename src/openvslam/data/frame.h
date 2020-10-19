@@ -159,7 +159,7 @@ namespace openvslam {
                              Vec2_t &reproj, float &x_right, unsigned int &pred_scale_level) const;
 
             /**
-             * Get keypoint indices in the cell which reference point is located
+             * Get keypoint indices in the cell which reference point is located. Returns only keypoints which are applicable for slam!
              * @param ref_x
              * @param ref_y
              * @param margin
@@ -212,8 +212,6 @@ namespace openvslam {
             keypoint_container keypts_right_;
             //! undistorted keypoints of monocular or stereo left image
             keypoint_container undist_keypts_;
-            //! bearing vectors
-            eigen_alloc_vector<Vec3_t> bearings_;
 
             //! disparities
             std::vector<float> stereo_x_right_;
@@ -231,9 +229,9 @@ namespace openvslam {
 
             // ORB descriptors
             //! ORB descriptors of monocular or stereo left image
-            cv::Mat descriptors_;
+//            cv::Mat descriptors_;
             //! ORB descriptors of stereo right image
-            cv::Mat descriptors_right_;
+//            cv::Mat descriptors_right_;
 
             //! landmarks, whose nullptr indicates no-association
             std::vector<landmark *> landmarks_;

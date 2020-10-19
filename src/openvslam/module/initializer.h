@@ -48,7 +48,7 @@ public:
     data::keypoint_container get_initial_keypoints() const;
 
     //! Get initial matches between the initial and current frames
-    std::vector<int> get_initial_matches() const;
+    std::vector<int> get_initial_slam_matches() const;
 
     //! Get the initial frame ID which succeeded in initialization
     unsigned int get_initial_frame_id() const;
@@ -105,9 +105,13 @@ private:
     //! initial frame
     data::frame init_frm_;
     //! coordinates of previously matched points to perform area-based matching
-    std::vector<cv::Point2f> prev_matched_coords_;
+    std::vector<cv::Point2f> prev_matched_slam_applicable_coords_;
+    //! coordinates of previously matched points to perform area-based matching
+    std::vector<cv::Point2f> prev_matched_slam_forbidden_coords_;
+    //! initial matching indices used for slam algorithms (index: idx of initial frame, value: idx of current frame)
+    std::vector<int> init_slam_matches_;
     //! initial matching indices (index: idx of initial frame, value: idx of current frame)
-    std::vector<int> init_matches_;
+    std::vector<int> init_non_slam_matches_;
 
     //-----------------------------------------
     // for stereo or RGBD camera model
@@ -117,6 +121,11 @@ private:
 
     //! Create an initial map with stereo or RGBD camera setup
     bool create_map_for_stereo(data::frame& curr_frm);
+
+    eigen_alloc_vector <Vec3_t> triangulate_non_slam_points(data::frame &frame);
+
+    void configure_new_landmark(data::frame &curr_frm, data::keyframe *init_keyfrm, data::keyframe *curr_keyfrm,
+                                unsigned int init_idx, const int curr_idx, data::landmark *lm) const;
 };
 
 } // namespace module

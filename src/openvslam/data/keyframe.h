@@ -56,10 +56,10 @@ public:
      * (NOTE: some variables must be recomputed after the construction. See the definition.)
      */
     keyframe(unsigned int id, unsigned int src_frm_id, double timestamp,
-             const Mat44_t& cam_pose_cw, camera::base* camera, const float depth_thr,
-             unsigned int num_keypts, const keypoint_container& keypts,
-             const keypoint_container& undist_keypts, const eigen_alloc_vector<Vec3_t>& bearings,
-             const std::vector<float>& stereo_x_right, const std::vector<float>& depths, const cv::Mat& descriptors,
+             const Mat44_t& cam_pose_cw, camera::base* camera, float depth_thr,
+             unsigned int num_keypts, keypoint_container  keypts,
+             keypoint_container undist_keypts,
+             const std::vector<float>& stereo_x_right, const std::vector<float>& depths,
              unsigned int num_scale_levels, float scale_factor,
              bow_vocabulary* bow_vocab, bow_database* bow_db, map_database* map_db);
 
@@ -241,8 +241,6 @@ public:
     const keypoint_container keypts_;
     //! undistorted keypoints of monocular or stereo left image
     const keypoint_container undist_keypts_;
-    //! bearing vectors
-    const eigen_alloc_vector<Vec3_t> bearings_;
 
     //! keypoint indices in each of the cells
     const std::vector<std::vector<std::vector<unsigned int>>> keypt_indices_in_cells_;
@@ -253,7 +251,7 @@ public:
     const std::vector<float> depths_;
 
     //! descriptors
-    const cv::Mat descriptors_;
+//    const cv::Mat descriptors_;
 
     //! BoW features (DBoW2 or FBoW)
 #ifdef USE_DBOW2

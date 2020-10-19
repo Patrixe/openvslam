@@ -161,9 +161,7 @@ namespace openvslam {
         }
 
         void segmented_orb_extractor::extract(const cv::_InputArray &in_image, const cv::Mat &seg_img,
-                                              const cv::_InputArray &in_image_mask,
-                                              data::keypoint_container &keypts,
-                                              const cv::_OutputArray &out_descriptors) {
+                                              const cv::_InputArray &in_image_mask, data::keypoint_container &keypts) {
             if (in_image.empty()) {
                 return;
             }
@@ -198,24 +196,14 @@ namespace openvslam {
                 compute_fast_keypoints(all_keypts, seg_img, cv::Mat());
             }
 
-            cv::Mat descriptors;
-
-            // TODO pali: num_keypts is currently based on all segmentation nodes, can be limited to only applicable nodes
             unsigned int num_keypts = 0;
             for (unsigned int level = 0; level < orb_params_.num_levels_; ++level) {
                 num_keypts += all_keypts.at(level).size();
-            }
-            if (num_keypts == 0) {
-                out_descriptors.release();
-            } else {
-                out_descriptors.create(num_keypts, 32, CV_8U);
-                descriptors = out_descriptors.getMat();
             }
 
             keypts.clear();
             keypts.reserve(num_keypts);
 
-            // TODO pali: filter descriptors (?) based on seg infos, check if keypoints are sufficient to display and evaluate feature information
             unsigned int offset = 0;
             for (unsigned int level = 0; level < orb_params_.num_levels_; ++level) {
 
@@ -228,8 +216,7 @@ namespace openvslam {
 
                 cv::Mat blurred_image = image_pyramid_.at(level).clone();
                 cv::GaussianBlur(blurred_image, blurred_image, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
-                cv::Mat descriptors_at_level = descriptors.rowRange(offset, offset + num_keypts_at_level);
-                compute_orb_descriptors(blurred_image, keypts_at_level.get_all_cv_keypoints(), descriptors_at_level);
+                compute_orb_descriptors(blurred_image, keypts_at_level);
 
                 offset += num_keypts_at_level;
 
@@ -241,6 +228,7 @@ namespace openvslam {
 
         void segmented_orb_extractor::transform_to_keypoint_structure(std::vector<cv::KeyPoint> &keypts_in_cell,
                                                                       data::keypoint_container &seg_keypts_in_cell) {
+//            seg_keypts_in_cell.reserve(keypts_in_cell.size());
             for (auto &point : keypts_in_cell) {
                 seg_keypts_in_cell.push_back(data::keypoint(point));
             }
@@ -334,7 +322,7 @@ namespace openvslam {
                 if (!this->seg_cfg->allowed_for_landmark(
                         segmentation_information.at<uchar>((keypoint.get_cv_keypoint().pt.y + offset_y) * scale_factor,
                                                            (keypoint.get_cv_keypoint().pt.x + offset_x) * scale_factor))) {
-                    keypoint.set_applicable_for_slam(true);
+                    keypoint.set_applicable_for_slam(false);
                 }
             }
         }

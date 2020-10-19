@@ -33,13 +33,14 @@ namespace openvslam {
 
             // Undistort keypoints
             camera_->undistort_keypoints(keypts_, undist_keypts_);
+            assert(keypts_.size() == undist_keypts_.size());
 
             // Ignore stereo parameters
             stereo_x_right_ = std::vector<float>(num_keypts_, -1);
             depths_ = std::vector<float>(num_keypts_, -1);
 
             // Convert to bearing vector
-            camera->convert_keypoints_to_bearings(undist_keypts_, bearings_);
+            camera->convert_keypoints_to_bearings(undist_keypts_);
 
             // Initialize association with 3D points
             landmarks_ = std::vector<openvslam::data::landmark *>(num_keypts_, nullptr);
@@ -80,13 +81,13 @@ namespace openvslam {
 
             // Estimate depth with stereo match
             match::stereo stereo_matcher(extractor_left->image_pyramid_, extractor_right_->image_pyramid_,
-                                         keypts_.get_all_cv_keypoints(), keypts_right_.get_all_cv_keypoints(), descriptors_, descriptors_right_,
+                                         keypts_, keypts_right_,
                                          scale_factors_, inv_scale_factors_,
                                          camera->focal_x_baseline_, camera_->true_baseline_);
             stereo_matcher.compute(stereo_x_right_, depths_);
 
             // Convert to bearing vector
-            camera->convert_keypoints_to_bearings(undist_keypts_, bearings_);
+            camera->convert_keypoints_to_bearings(undist_keypts_);
 
             // Initialize association with 3D points
             landmarks_ = std::vector<openvslam::data::landmark *>(num_keypts_, nullptr);
@@ -121,7 +122,7 @@ namespace openvslam {
             compute_stereo_from_depth(img_depth);
 
             // Convert to bearing vector
-            camera->convert_keypoints_to_bearings(undist_keypts_, bearings_);
+            camera->convert_keypoints_to_bearings(undist_keypts_);
 
             // Initialize association with 3D points
             landmarks_ = std::vector<openvslam::data::landmark *>(num_keypts_, nullptr);
@@ -151,12 +152,12 @@ namespace openvslam {
             switch (img_side) {
                 case image_side::Left: {
                     dynamic_cast<feature::segmented_orb_extractor *>(extractor_)->extract(img, seg_img, mask,
-                                                                                          keypts_,descriptors_);
+                                                                                          keypts_);
                     break;
                 }
                 case image_side::Right: {
                     dynamic_cast<feature::segmented_orb_extractor *>(extractor_right_)->extract(img, seg_img, mask,
-                                                                                                keypts_,descriptors_right_);
+                                                                                                keypts_right_);
                     break;
                 }
             }

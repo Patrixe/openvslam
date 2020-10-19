@@ -46,6 +46,11 @@ public:
     //! Get the valid/invalid flags of triangulated 3D points as keypoint indices in the reference frame
     std::vector<bool> get_triangulated_flags() const;
 
+    void apply_transformation_to_points(const std::vector<data::keypoint> &cur_points,
+                                        const std::vector<data::keypoint> &ref_points,
+                                        std::vector<std::pair<int, int>> &ref_current_matches,
+                                        eigen_alloc_vector <openvslam::Vec3_t> &triangulated_pts);
+
 protected:
     //! Find the most plausible pose and set them to the member variables (outputs)
     bool find_most_plausible_pose(const eigen_alloc_vector<Mat33_t>& init_rots, const eigen_alloc_vector<Vec3_t>& init_transes,
@@ -63,7 +68,7 @@ protected:
     //! camera model of reference frame
     camera::base* const ref_camera_;
     //! undistorted keypoints of reference frame
-    const data::keypoint_container ref_undist_keypts_;
+    const std::vector<cv::KeyPoint> ref_undist_keypts_;
     //! bearing vectors of reference frame
     const eigen_alloc_vector<Vec3_t> ref_bearings_;
 
@@ -73,7 +78,7 @@ protected:
     //! camera matrix of current frame
     camera::base* cur_camera_;
     //! undistorted keypoints of current frame
-    data::keypoint_container cur_undist_keypts_;
+    std::vector<cv::KeyPoint> cur_undist_keypts_;
     //! bearing vectors of current frame
     eigen_alloc_vector<Vec3_t> cur_bearings_;
 
@@ -94,6 +99,8 @@ protected:
     const float parallax_deg_thr_;
     //! reprojection error threshold
     const float reproj_err_thr_;
+    //! minimal allowed angle for parallax computation = cos(0.5deg)
+    const float cos_parallax_thr = 0.99996192306;
 
     //-----------------------------------------
     // output variables

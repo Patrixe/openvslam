@@ -146,7 +146,7 @@ void landmark::compute_descriptor() {
         const auto idx = observation.second;
 
         if (!keyfrm->will_be_erased()) {
-            descriptors.push_back(keyfrm->descriptors_.row(idx));
+            descriptors.push_back(keyfrm->undist_keypts_.at(idx).get_orb_descriptor_as_cv_mat());
         }
     }
 

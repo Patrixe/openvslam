@@ -26,8 +26,8 @@ bool two_view_triangulator::triangulate(const unsigned idx_1, const unsigned int
     const bool is_stereo_2 = 0 <= keypt_2_x_right;
 
     // rays with reference of each camera
-    const Vec3_t ray_c_1 = keyfrm_1_->bearings_.at(idx_1);
-    const Vec3_t ray_c_2 = keyfrm_2_->bearings_.at(idx_2);
+    const Vec3_t ray_c_1 = keyfrm_1_->undist_keypts_.at(idx_1).get_bearing();
+    const Vec3_t ray_c_2 = keyfrm_2_->undist_keypts_.at(idx_2).get_bearing();
     // rays with the world reference
     const Vec3_t ray_w_1 = rot_w1_ * ray_c_1;
     const Vec3_t ray_w_2 = rot_w2_ * ray_c_2;

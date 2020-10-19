@@ -24,9 +24,8 @@ namespace openvslam {
                                     const std::vector<std::vector<float>> &mask_rects = {});
 
             //! Extract keypoints and each descriptor of them
-            void extract(const cv::_InputArray &in_image, const cv::Mat &seg_img, const cv::_InputArray &in_image_mask,
-                         data::keypoint_container &seg_key_pts,
-                         const cv::_OutputArray &out_descriptors);
+            void extract(const cv::_InputArray &in_image, const cv::Mat &seg_img,
+                         const cv::_InputArray &in_image_mask, data::keypoint_container &keypts);
 
         protected:
             std::shared_ptr<segmentation_config> seg_cfg;

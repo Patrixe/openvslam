@@ -1,12 +1,14 @@
+#include <openvslam/data/keypoint.h>
 #include "openvslam/util/converter.h"
 
 namespace openvslam {
 namespace util {
 
-std::vector<cv::Mat> converter::to_desc_vec(const cv::Mat& desc) {
-    std::vector<cv::Mat> desc_vec(desc.rows);
-    for (int i = 0; i < desc.rows; ++i) {
-        desc_vec.at(i) = desc.row(i);
+std::vector<cv::Mat> converter::to_desc_vec(const data::keypoint_container points) {
+    std::vector<cv::Mat> desc_vec;
+    desc_vec.reserve(points.size());
+    for (auto point : points) {
+        desc_vec.push_back(point.get_orb_descriptor_as_cv_mat());
     }
     return desc_vec;
 }

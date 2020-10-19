@@ -71,8 +71,8 @@ unsigned int robust::match_for_triangulation(data::keyframe* keyfrm_1, data::key
 
                 // 特徴点・特徴量を取得
                 const auto& keypt_1 = keyfrm_1->undist_keypts_.at(idx_1);
-                const Vec3_t& bearing_1 = keyfrm_1->bearings_.at(idx_1);
-                const auto& desc_1 = keyfrm_1->descriptors_.row(idx_1);
+                const Vec3_t& bearing_1 = keypt_1.get_bearing();
+                const auto& desc_1 = keyfrm_1->undist_keypts_.at(idx_1).get_orb_descriptor_as_cv_mat();
 
                 // keyframe2の特徴点で一番ハミング距離が近いものを探す
                 unsigned int best_hamm_dist = HAMMING_DIST_THR_LOW;
@@ -94,8 +94,8 @@ unsigned int robust::match_for_triangulation(data::keyframe* keyfrm_1, data::key
                     const bool is_stereo_keypt_2 = 0 <= keyfrm_2->stereo_x_right_.at(idx_2);
 
                     // 特徴点・特徴量を取得
-                    const Vec3_t& bearing_2 = keyfrm_2->bearings_.at(idx_2);
-                    const auto& desc_2 = keyfrm_2->descriptors_.row(idx_2);
+                    const Vec3_t& bearing_2 = keyfrm_2->undist_keypts_.at(idx_2).get_bearing();
+                    const auto& desc_2 = keyfrm_2->undist_keypts_.at(idx_2).get_orb_descriptor_as_cv_mat();
 
                     // 距離計算
                     const auto hamm_dist = compute_descriptor_distance_32(desc_1, desc_2);
@@ -185,7 +185,7 @@ unsigned int robust::match_frame_and_keyframe(data::frame& frm, data::keyframe* 
     brute_force_match(frm, keyfrm, matches);
 
     // eight-point RANSACでインライアのみを抽出
-    solve::essential_solver solver(frm.bearings_, keyfrm->bearings_, matches);
+    solve::essential_solver solver(frm.undist_keypts_.get_slam_applicable_bearings(), keyfrm->undist_keypts_.get_slam_applicable_bearings(), matches);
     solver.find_via_ransac(50, false);
     if (!solver.solution_is_valid()) {
         return 0;
@@ -219,8 +219,8 @@ unsigned int robust::brute_force_match(data::frame& frm, data::keyframe* keyfrm,
     const auto keypts_1 = frm.keypts_;
     const auto keypts_2 = keyfrm->keypts_;
     const auto lms_2 = keyfrm->get_landmarks();
-    const auto& descs_1 = frm.descriptors_;
-    const auto& descs_2 = keyfrm->descriptors_;
+//    const auto& descs_1 = frm.descriptors_;
+//    const auto& descs_2 = keyfrm->descriptors_;
 
     // 2. キーフレームの各descriptorに対して，1番目と2番目に近いフレームのdescriptorを求める
     //    キーフレームのdescriptorは，3次元点と結びついているもののみ対象にする
@@ -241,7 +241,7 @@ unsigned int robust::brute_force_match(data::frame& frm, data::keyframe* keyfrm,
         }
 
         // キーフレームのdescriptorを取得
-        const auto& desc_2 = descs_2.row(idx_2);
+        const auto& desc_2 = keyfrm->undist_keypts_.at(idx_2).get_orb_descriptor_as_cv_mat();
 
         // 1番目と2番目に近いフレームのdescriptorを求める
         unsigned int best_hamm_dist = MAX_HAMMING_DIST;
@@ -254,7 +254,7 @@ unsigned int robust::brute_force_match(data::frame& frm, data::keyframe* keyfrm,
                 continue;
             }
 
-            const auto& desc_1 = descs_1.row(idx_1);
+            const auto& desc_1 = frm.undist_keypts_.at(idx_1).get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(desc_2, desc_1);
 

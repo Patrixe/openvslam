@@ -45,10 +45,10 @@ public:
     initializer_state_t get_state() const;
 
     //! Get keypoints of the initial frame
-    data::keypoint_container get_initial_keypoints() const;
+    std::vector<data::keypoint> get_initial_keypoints() const;
 
     //! Get initial matches between the initial and current frames
-    const std::map<int, std::pair<data::keypoint, data::keypoint>> get_initial_slam_matches() const;
+    std::map<int, std::pair<data::keypoint, data::keypoint>> get_initial_slam_matches() const;
 
     //! Get the initial frame ID which succeeded in initialization
     unsigned int get_initial_frame_id() const;
@@ -126,6 +126,9 @@ private:
 
     void configure_new_landmark(data::frame &curr_frm, data::keyframe *init_keyfrm, data::keyframe *curr_keyfrm,
                                 unsigned int init_idx, const int curr_idx, data::landmark *lm) const;
+
+    void filter_not_triangulated(const std::map<int, bool> &is_triangulated,
+                                 std::map<int, std::pair<data::keypoint, data::keypoint>> &matches_to_be_filtered) const;
 };
 
 } // namespace module

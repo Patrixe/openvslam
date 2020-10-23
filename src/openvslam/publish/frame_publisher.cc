@@ -23,7 +23,7 @@ frame_publisher::~frame_publisher() {
 cv::Mat frame_publisher::draw_frame(const bool draw_text) {
     cv::Mat img;
     tracker_state_t tracking_state;
-    data::keypoint_container init_keypts;
+    std::vector<data::keypoint> init_keypts;
     std::map<int, std::pair<data::keypoint, data::keypoint>> init_matches;
     data::keypoint_container curr_keypts;
     double elapsed_ms;
@@ -68,7 +68,7 @@ cv::Mat frame_publisher::draw_frame(const bool draw_text) {
     unsigned int num_tracked = 0;
     switch (tracking_state) {
         case tracker_state_t::Initializing: {
-            num_tracked = draw_initial_points(img, init_keypts, init_matches, curr_keypts, mag);
+            num_tracked = draw_initial_points(img, init_matches, mag);
             break;
         }
         case tracker_state_t::Tracking: {
@@ -88,9 +88,8 @@ cv::Mat frame_publisher::draw_frame(const bool draw_text) {
     return img;
 }
 
-unsigned int frame_publisher::draw_initial_points(cv::Mat &img, const data::keypoint_container &init_keypts,
+unsigned int frame_publisher::draw_initial_points(cv::Mat &img,
                                                   const std::map<int, std::pair<data::keypoint, data::keypoint>> &init_matches,
-                                                  const data::keypoint_container &curr_keypts,
                                                   const float mag) const {
     unsigned int num_tracked = 0;
 

@@ -25,11 +25,11 @@ namespace openvslam {
             return trans_ref_to_cur_;
         }
 
-        eigen_alloc_vector<Vec3_t> base::get_triangulated_pts() const {
+        eigen_alloc_map<int, Vec3_t> base::get_triangulated_pts() const {
             return triangulated_pts_;
         }
 
-        std::vector<bool> base::get_triangulated_flags() const {
+        std::map<int, bool> base::get_triangulated_flags() const {
             return is_triangulated_;
         }
 
@@ -40,9 +40,9 @@ namespace openvslam {
             const auto num_hypothesis = init_rots.size();
 
             // triangulated 3D points
-            std::vector<eigen_alloc_vector<Vec3_t>> init_triangulated_pts(num_hypothesis);
+            std::vector<eigen_alloc_map<int, Vec3_t>> init_triangulated_pts(num_hypothesis);
             // valid/invalid flag for each 3D point
-            std::vector<std::vector<bool>> init_is_triangulated(num_hypothesis);
+            std::vector<std::map<int, bool>> init_is_triangulated(num_hypothesis);
             // parallax between the two observations of each 3D point
             std::vector<float> init_parallax(num_hypothesis);
             // number of valid 3D points
@@ -93,14 +93,10 @@ namespace openvslam {
 
         unsigned int base::check_pose(const Mat33_t &rot_ref_to_cur, const Vec3_t &trans_ref_to_cur,
                                       const std::vector<bool> &is_inlier_match, const bool depth_is_positive,
-                                      eigen_alloc_vector<Vec3_t> &triangulated_pts, std::vector<bool> &is_triangulated,
+                                      eigen_alloc_map<int, Vec3_t> &triangulated_pts, std::map<int, bool> &is_triangulated,
                                       float &parallax_deg) {
 
             const float reproj_err_thr_sq = reproj_err_thr_ * reproj_err_thr_;
-
-            // resize buffers according to the number of observed keypoints in the reference
-            is_triangulated.resize(ref_undist_keypts_.size(), false);
-            triangulated_pts.resize(ref_undist_keypts_.size());
 
             std::vector<float> cos_parallaxes;
             cos_parallaxes.reserve(ref_undist_keypts_.size());
@@ -185,8 +181,9 @@ namespace openvslam {
                 ++num_valid_pts;
                 cos_parallaxes.push_back(cos_parallax);
                 if (!parallax_is_small) {
-                    triangulated_pts.at(ref_cur_matches_.at(i).first) = pos_c_in_ref;
-                    is_triangulated.at(ref_cur_matches_.at(i).first) = true;
+                    // counters, not point_ids!
+                    triangulated_pts.insert(std::pair<int, Vec3_t>(ref_undist_keypt_ids.at(i), pos_c_in_ref));
+                    is_triangulated.insert(std::pair<int, bool>(ref_undist_keypt_ids.at(i), true));
                 }
             }
 

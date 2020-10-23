@@ -41,10 +41,10 @@ public:
     Vec3_t get_translation_ref_to_cur() const;
 
     //! Get the triangulated 3D points with the origin of the reference frame
-    eigen_alloc_vector<Vec3_t> get_triangulated_pts() const;
+    eigen_alloc_map<int, Vec3_t> get_triangulated_pts() const;
 
     //! Get the valid/invalid flags of triangulated 3D points as keypoint indices in the reference frame
-    std::vector<bool> get_triangulated_flags() const;
+    std::map<int, bool> get_triangulated_flags() const;
 
     void apply_transformation_to_points(std::map<int, std::pair<data::keypoint, data::keypoint>> ref_current_matches,
                                         std::map<int, Vec3_t> &triangulated_pts);
@@ -57,7 +57,7 @@ protected:
     //! Check the reconstructed camera poses via triangulation-based verification
     unsigned int check_pose(const Mat33_t& rot_ref_to_cur, const Vec3_t& trans_ref_to_cur,
                             const std::vector<bool>& is_inlier_match, bool depth_is_positive,
-                            eigen_alloc_vector<Vec3_t>& triangulated_pts, std::vector<bool>& is_triangulated,
+                            eigen_alloc_map<int, Vec3_t>& triangulated_pts, std::map<int, bool>& is_triangulated,
                             float& parallax_deg);
 
     //-----------------------------------------
@@ -67,6 +67,8 @@ protected:
     camera::base* const ref_camera_;
     //! undistorted keypoints of reference frame
     std::vector<cv::KeyPoint> ref_undist_keypts_;
+    // point ids of the ref_undist_keypts, because we do not rely on indices outside of this class
+    std::vector<int> ref_undist_keypt_ids;
     //! bearing vectors of reference frame
     eigen_alloc_vector<Vec3_t> ref_bearings_;
 
@@ -108,9 +110,9 @@ protected:
     //! initial translation from reference to current
     Vec3_t trans_ref_to_cur_ = Vec3_t::Zero();
     //! triangulated pts, with respect to indices of reference frame
-    eigen_alloc_vector<Vec3_t> triangulated_pts_;
+    eigen_alloc_map<int, Vec3_t> triangulated_pts_;
     //! each indices of reference frame is successfully triangulated or not
-    std::vector<bool> is_triangulated_;
+    std::map<int, bool> is_triangulated_;
 };
 
 } // namespace initialize

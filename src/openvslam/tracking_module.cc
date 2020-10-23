@@ -102,7 +102,7 @@ namespace openvslam {
         return mapping_is_enabled_;
     }
 
-    data::keypoint_container tracking_module::get_initial_keypoints() const {
+    std::vector<data::keypoint> tracking_module::get_initial_keypoints() const {
         return initializer_.get_initial_keypoints();
     }
 

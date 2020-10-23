@@ -45,9 +45,9 @@ public:
     cv::Mat draw_frame(bool draw_text = true);
 
 protected:
-    unsigned int draw_initial_points(cv::Mat& img, const data::keypoint_container &init_keypts,
-                                     const std::map<int, std::pair<data::keypoint, data::keypoint>> &init_matches, const data::keypoint_container &curr_keypts,
-                                     const float mag = 1.0) const;
+    unsigned int draw_initial_points(cv::Mat& img,
+                                     const std::map<int, std::pair<data::keypoint, data::keypoint>> &init_matches,
+                                     float mag = 1.0) const;
 
     unsigned int draw_tracked_points(cv::Mat& img, const data::keypoint_container &curr_keypts,
                                      const std::vector<bool>& is_tracked, const bool mapping_is_enabled,
@@ -77,7 +77,7 @@ protected:
     tracker_state_t tracking_state_;
 
     //! initial keypoints
-    data::keypoint_container init_keypts_;
+    std::vector<data::keypoint> init_keypts_;
     //! matching between initial frame and current frame
     std::map<int, std::pair<data::keypoint, data::keypoint>> init_matches_;
 

@@ -41,11 +41,14 @@ namespace openvslam {
 //    cur_bearings_ = cur_frm.undist_keypts_.get_slam_applicable_bearings();
             cur_undist_keypts_.clear();
             cur_undist_keypts_.reserve(ref_matches_with_cur.size());
+
             cur_bearings_.clear();
             cur_bearings_.reserve(ref_matches_with_cur.size());
 
             ref_undist_keypts_.clear();
             ref_undist_keypts_.reserve(ref_matches_with_cur.size());
+            ref_undist_keypt_ids.clear();
+            ref_undist_keypt_ids.reserve(ref_matches_with_cur.size());
             ref_bearings_.clear();
             ref_bearings_.reserve(ref_matches_with_cur.size());
 
@@ -57,6 +60,7 @@ namespace openvslam {
             for (const std::pair<int, std::pair<data::keypoint, data::keypoint>> match : ref_matches_with_cur) {
                 // add points to the lists of point an bearing. We dont need all points of a frame, as only matches are taken into account
                 ref_undist_keypts_.emplace_back(match.second.first.get_cv_keypoint());
+                ref_undist_keypt_ids.emplace_back(match.first);
                 ref_bearings_.emplace_back(match.second.first.get_bearing());
                 // same for current frame
                 cur_undist_keypts_.emplace_back(match.second.second.get_cv_keypoint());

@@ -16,6 +16,8 @@ namespace openvslam {
                 return 0;
             }
 
+            found_matches.clear();
+
             angle_checker<int> angle_checker;
             std::map<int, unsigned int> matched_dists_in_frm_2;
             for (auto point : frame_2_slam_cv_points) {

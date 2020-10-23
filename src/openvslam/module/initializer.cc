@@ -40,11 +40,11 @@ namespace openvslam {
             return state_;
         }
 
-        data::keypoint_container initializer::get_initial_keypoints() const {
-            return init_frm_.keypts_;
+        std::vector<data::keypoint> initializer::get_initial_keypoints() const {
+            return init_frm_.keypts_.get_slam_applicable_keypoints();
         }
 
-        const std::map<int, std::pair<data::keypoint, data::keypoint>> initializer::get_initial_slam_matches() const {
+        std::map<int, std::pair<data::keypoint, data::keypoint>> initializer::get_initial_slam_matches() const {
             return init_slam_matches_;
         }
 
@@ -114,9 +114,6 @@ namespace openvslam {
                 prev_matched_slam_forbidden_coords_[non_slam_cv_point.get_id()] = non_slam_cv_point.get_cv_keypoint().pt;
             }
 
-            init_slam_matches_.clear();
-            init_non_slam_matches_.clear();
-
             // build a initializer
             initializer_.reset(nullptr);
             switch (init_frm_.camera_->model_type_) {
@@ -175,24 +172,20 @@ namespace openvslam {
         bool initializer::create_map_for_monocular(data::frame &curr_frm) {
             assert(state_ == initializer_state_t::Initializing);
 
-            eigen_alloc_vector<Vec3_t> init_triangulated_slam_pts;
+            eigen_alloc_map<int, Vec3_t> init_triangulated_slam_pts;
+            // TODO pali: maybe use the eigen version as well
             std::map<int, Vec3_t> init_triangulated_non_slam_pts;
             {
                 assert(initializer_);
-                // problem: initializer is used to compute the matrices AND to look for correct triangulation
+                // triangulation of points used for the initialization
                 init_triangulated_slam_pts = initializer_->get_triangulated_pts();
-                init_triangulated_non_slam_pts = triangulate_non_slam_points();
                 const auto is_triangulated = initializer_->get_triangulated_flags();
-
-                // init_matches has been initialized by the area matcher
                 // make invalid the matchings which have not been triangulated
-                for (auto iter = init_slam_matches_.begin(); iter != init_slam_matches_.end();) {
-                    if (is_triangulated.at(iter->first)) {
-                        iter++;
-                        continue;
-                    }
-                    init_slam_matches_.erase(iter++);
-                }
+                filter_not_triangulated(is_triangulated, init_slam_matches_);
+
+
+                // triangulation of points not used for initialization, but still necessary to provide a correct position
+                init_triangulated_non_slam_pts = triangulate_non_slam_points();
 
                 // set the camera poses
                 init_frm_.set_cam_pose(Mat44_t::Identity());
@@ -224,14 +217,14 @@ namespace openvslam {
             map_db_->update_frame_statistics(curr_frm, false);
 
             // assign 2D-3D associations of slam landmarks
-            for (auto match : init_slam_matches_) {
+            for (auto &match : init_slam_matches_) {
                 // remember the map -> id_frameA -> pair(pointA, pointB)
                 auto lm = new data::landmark(init_triangulated_slam_pts.at(match.first), curr_keyfrm, map_db_);
                 configure_new_landmark(curr_frm, init_keyfrm, curr_keyfrm, match.first, match.second.second.get_id(), lm);
             }
 
             // assign 2D-3D associations of landmarks not suitable for slam
-            for (auto match : init_non_slam_matches_) {
+            for (auto &match : init_non_slam_matches_) {
                 // remember the map -> id_frameA -> pair(pointA, pointB)
                 auto lm = new data::landmark(init_triangulated_non_slam_pts.at(match.first), curr_keyfrm, map_db_);
                 configure_new_landmark(curr_frm, init_keyfrm, curr_keyfrm, match.first, match.second.second.get_id(), lm);
@@ -262,6 +255,17 @@ namespace openvslam {
                          init_frm_.id_, curr_frm.id_);
             state_ = initializer_state_t::Succeeded;
             return true;
+        }
+
+        void initializer::filter_not_triangulated(const std::map<int, bool> &is_triangulated,
+                                                  std::map<int, std::pair<data::keypoint, data::keypoint>> &matches_to_be_filtered) const {
+            for (auto iter = matches_to_be_filtered.begin(); iter != matches_to_be_filtered.end();) {
+                if (is_triangulated.count(iter->first)) {
+                    ++iter;
+                    continue;
+                }
+                matches_to_be_filtered.erase(iter++);
+            }
         }
 
         // Todo pali: association via indices has to be removed, or are these global ids?

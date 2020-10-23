@@ -29,7 +29,7 @@ public:
     ~perspective() override;
 
     //! Initialize with the current frame
-    bool initialize(const data::frame& cur_frm, const std::vector<int>& ref_matches_with_cur) override;
+    bool initialize(const data::frame& cur_frm, const std::map<int, std::pair<data::keypoint, data::keypoint>> &ref_matches_with_cur) override;
 
 private:
     //! Reconstruct the initial map with the H matrix

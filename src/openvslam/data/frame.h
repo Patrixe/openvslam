@@ -159,7 +159,7 @@ namespace openvslam {
                              Vec2_t &reproj, float &x_right, unsigned int &pred_scale_level) const;
 
             /**
-             * Get keypoint indices in the cell which reference point is located. Returns only keypoints which are applicable for slam!
+             * Get keypoints in the area around the reference point.
              * @param ref_x
              * @param ref_y
              * @param margin
@@ -167,7 +167,7 @@ namespace openvslam {
              * @param max_level
              * @return
              */
-            std::vector<unsigned int> get_keypoints_in_cell(const float ref_x, const float ref_y, const float margin,
+            std::vector<std::reference_wrapper<const data::keypoint>> get_keypoints_in_cell(const float ref_x, const float ref_y, const float margin,
                                                             const int min_level = -1, const int max_level = -1) const;
 
             /**

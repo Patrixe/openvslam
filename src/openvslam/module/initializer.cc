@@ -44,7 +44,7 @@ namespace openvslam {
             return init_frm_.keypts_;
         }
 
-        std::vector<int> initializer::get_initial_slam_matches() const {
+        const std::map<int, std::pair<data::keypoint, data::keypoint>> initializer::get_initial_slam_matches() const {
             return init_slam_matches_;
         }
 
@@ -104,21 +104,18 @@ namespace openvslam {
             init_frm_ = data::frame(curr_frm);
 
             // initialize the previously matched coordinates
-            const std::vector<cv::KeyPoint> &slam_cv_points = init_frm_.undist_keypts_.get_slam_applicable_cv_keypoints();
-            prev_matched_slam_applicable_coords_.resize(slam_cv_points.size());
-            for (unsigned int i = 0; i < slam_cv_points.size(); ++i) {
-                prev_matched_slam_applicable_coords_.at(i) = slam_cv_points.at(i).pt;
+            prev_matched_slam_applicable_coords_.clear();
+            for (auto slam_cv_point : init_frm_.undist_keypts_.get_slam_applicable_keypoints()) {
+                prev_matched_slam_applicable_coords_[slam_cv_point.get_id()] = slam_cv_point.get_cv_keypoint().pt;
             }
 
-            const std::vector<cv::KeyPoint> &non_slam_cv_points = init_frm_.undist_keypts_.get_slam_forbidden_cv_keypoints();
-            prev_matched_slam_forbidden_coords_.resize(non_slam_cv_points.size());
-            for (unsigned int i = 0; i < non_slam_cv_points.size(); ++i) {
-                prev_matched_slam_forbidden_coords_.at(i) = non_slam_cv_points.at(i).pt;
+            prev_matched_slam_forbidden_coords_.clear();
+            for (auto non_slam_cv_point : init_frm_.undist_keypts_.get_slam_forbidden_keypoints()) {
+                prev_matched_slam_forbidden_coords_[non_slam_cv_point.get_id()] = non_slam_cv_point.get_cv_keypoint().pt;
             }
 
-            // initialize matchings (init_idx -> curr_idx)
-            std::fill(init_slam_matches_.begin(), init_slam_matches_.end(), -1);
-            std::fill(init_non_slam_matches_.begin(), init_non_slam_matches_.end(), -1);
+            init_slam_matches_.clear();
+            init_non_slam_matches_.clear();
 
             // build a initializer
             initializer_.reset(nullptr);
@@ -150,17 +147,18 @@ namespace openvslam {
 
             match::area matcher(0.9, true);
             // compute matches which are used in the initializer
-            const auto num_matches = matcher.match_in_consistent_area(init_frm_, curr_frm,
+            // init_slam_matches uses the position of an element and its value to match ids.
+            const auto num_matches = matcher.match_in_consistent_area(curr_frm,
                                                                       prev_matched_slam_applicable_coords_,
                                                                       init_slam_matches_, 100,
-                                                                      init_frm_.undist_keypts_.get_slam_applicable_cv_keypoints(),
-                                                                      curr_frm.undist_keypts_.get_slam_applicable_cv_keypoints());
+                                                                      init_frm_.undist_keypts_.get_slam_applicable_keypoints(),
+                                                                      curr_frm.undist_keypts_.get_slam_applicable_keypoints());
             // compute additional matches which are not used for slam algorithms
-            matcher.match_in_consistent_area(init_frm_, curr_frm,
+            matcher.match_in_consistent_area(curr_frm,
                                              prev_matched_slam_forbidden_coords_,
                                              init_non_slam_matches_, 100,
-                                             init_frm_.undist_keypts_.get_slam_forbidden_cv_keypoints(),
-                                             curr_frm.undist_keypts_.get_slam_forbidden_cv_keypoints());
+                                             init_frm_.undist_keypts_.get_slam_forbidden_keypoints(),
+                                             curr_frm.undist_keypts_.get_slam_forbidden_keypoints());
 
             if (num_matches < min_num_triangulated_) {
                 // rebuild the initializer with the next frame
@@ -169,6 +167,7 @@ namespace openvslam {
             }
 
             // try to initialize with the current frame, computes fundamental and homography matrices
+            // init matches relies on an ordered list of slam applicable points
             assert(initializer_);
             return initializer_->initialize(curr_frm, init_slam_matches_);
         }
@@ -177,24 +176,22 @@ namespace openvslam {
             assert(state_ == initializer_state_t::Initializing);
 
             eigen_alloc_vector<Vec3_t> init_triangulated_slam_pts;
-            eigen_alloc_vector<Vec3_t> init_triangulated_non_slam_pts;
+            std::map<int, Vec3_t> init_triangulated_non_slam_pts;
             {
                 assert(initializer_);
                 // problem: initializer is used to compute the matrices AND to look for correct triangulation
                 init_triangulated_slam_pts = initializer_->get_triangulated_pts();
-                init_triangulated_non_slam_pts = triangulate_non_slam_points(curr_frm);
+                init_triangulated_non_slam_pts = triangulate_non_slam_points();
                 const auto is_triangulated = initializer_->get_triangulated_flags();
 
                 // init_matches has been initialized by the area matcher
                 // make invalid the matchings which have not been triangulated
-                for (unsigned int i = 0; i < init_slam_matches_.size(); ++i) {
-                    if (init_slam_matches_.at(i) < 0) {
+                for (auto iter = init_slam_matches_.begin(); iter != init_slam_matches_.end();) {
+                    if (is_triangulated.at(iter->first)) {
+                        iter++;
                         continue;
                     }
-                    if (is_triangulated.at(i)) {
-                        continue;
-                    }
-                    init_slam_matches_.at(i) = -1;
+                    init_slam_matches_.erase(iter++);
                 }
 
                 // set the camera poses
@@ -227,31 +224,17 @@ namespace openvslam {
             map_db_->update_frame_statistics(curr_frm, false);
 
             // assign 2D-3D associations of slam landmarks
-            for (unsigned int init_idx = 0; init_idx < init_slam_matches_.size(); init_idx++) {
-                int curr_idx = init_slam_matches_.at(init_idx);
-                if (curr_idx < 0) {
-                    continue;
-                }
-
-                // construct a landmark
-                auto lm = new data::landmark(init_triangulated_slam_pts.at(init_idx), curr_keyfrm, map_db_);
-                configure_new_landmark(curr_frm, init_keyfrm, curr_keyfrm, init_idx, curr_idx, lm);
+            for (auto match : init_slam_matches_) {
+                // remember the map -> id_frameA -> pair(pointA, pointB)
+                auto lm = new data::landmark(init_triangulated_slam_pts.at(match.first), curr_keyfrm, map_db_);
+                configure_new_landmark(curr_frm, init_keyfrm, curr_keyfrm, match.first, match.second.second.get_id(), lm);
             }
 
             // assign 2D-3D associations of landmarks not suitable for slam
-            for (unsigned int init_idx = 0; init_idx < init_non_slam_matches_.size(); init_idx++) {
-                int curr_idx = init_non_slam_matches_.at(init_idx);
-                if (curr_idx < 0) {
-                    continue;
-                }
-
-                // Ids are created by simply counting up. Since we already did this for slam matches, we have to add an offset to avoid duplicate ids.
-                init_idx += init_slam_matches_.size();
-                curr_idx += init_slam_matches_.size();
-
-                // construct a landmark
-                auto lm = new data::landmark(init_triangulated_slam_pts.at(init_idx), curr_keyfrm, map_db_);
-                configure_new_landmark(curr_frm, init_keyfrm, curr_keyfrm, init_idx, curr_idx, lm);
+            for (auto match : init_non_slam_matches_) {
+                // remember the map -> id_frameA -> pair(pointA, pointB)
+                auto lm = new data::landmark(init_triangulated_non_slam_pts.at(match.first), curr_keyfrm, map_db_);
+                configure_new_landmark(curr_frm, init_keyfrm, curr_keyfrm, match.first, match.second.second.get_id(), lm);
             }
 
             // global bundle adjustment
@@ -382,19 +365,9 @@ namespace openvslam {
             return true;
         }
 
-        eigen_alloc_vector<Vec3_t> initializer::triangulate_non_slam_points(data::frame &frame) {
-            std::vector<std::pair<int, int>> ref_cur_matches;
-            for (unsigned int ref_idx = 0; ref_idx < init_non_slam_matches_.size(); ++ref_idx) {
-                const auto cur_idx = init_non_slam_matches_.at(ref_idx);
-                if (0 <= cur_idx) {
-                    ref_cur_matches.emplace_back(std::make_pair(ref_idx, cur_idx));
-                }
-            }
-
-            eigen_alloc_vector<Vec3_t> matches;
-            initializer_->apply_transformation_to_points(frame.undist_keypts_.get_slam_applicable_keypoints(),
-                                                         init_frm_.undist_keypts_.get_slam_applicable_keypoints(),
-                                                         ref_cur_matches, matches);
+        std::map<int, Vec3_t> initializer::triangulate_non_slam_points() {
+            std::map<int, Vec3_t> matches;
+            initializer_->apply_transformation_to_points(init_non_slam_matches_, matches);
             return matches;
         }
 

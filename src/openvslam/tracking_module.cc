@@ -106,7 +106,7 @@ namespace openvslam {
         return initializer_.get_initial_keypoints();
     }
 
-    std::vector<int> tracking_module::get_initial_matches() const {
+    const std::map<int, std::pair<data::keypoint, data::keypoint>> tracking_module::get_initial_matches() const {
         return initializer_.get_initial_slam_matches();
     }
 

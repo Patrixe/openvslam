@@ -117,16 +117,10 @@ void perspective::undistort_keypoints(data::keypoint_container &dist_keypts, dat
                         cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::MAX_ITER, 20, 1e-6));
     mat = mat.reshape(1);
 
-    // convert to cv::Mat
-    undist_keypts.resize(dist_keypts.size());
-    for (unsigned long idx = 0; idx < undist_keypts.size(); ++idx) {
+    for (unsigned long idx = 0; idx < dist_keypts.size(); ++idx) {
+        undist_keypts.emplace_back(dist_keypts.at(idx));
         undist_keypts.at(idx).get_cv_keypoint().pt.x = mat.at<float>(idx, 0);
         undist_keypts.at(idx).get_cv_keypoint().pt.y = mat.at<float>(idx, 1);
-        undist_keypts.at(idx).get_cv_keypoint().angle = dist_keypts.at(idx).get_cv_keypoint().angle;
-        undist_keypts.at(idx).get_cv_keypoint().size = dist_keypts.at(idx).get_cv_keypoint().size;
-        undist_keypts.at(idx).get_cv_keypoint().octave = dist_keypts.at(idx).get_cv_keypoint().octave;
-        undist_keypts.at(idx).set_applicable_for_slam(dist_keypts.at(idx).is_applicable_for_slam());
-        undist_keypts.at(idx).set_orb_descriptor(dist_keypts.at(idx).get_orb_descriptor());
     }
 }
 

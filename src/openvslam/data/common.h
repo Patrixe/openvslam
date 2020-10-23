@@ -3,6 +3,7 @@
 
 #include "openvslam/type.h"
 #include "openvslam/camera/base.h"
+#include "keypoint.h"
 
 #include <opencv2/core.hpp>
 #include <nlohmann/json_fwd.hpp>
@@ -75,10 +76,10 @@ inline bool get_cell_indices(camera::base* camera, const cv::KeyPoint& keypt, in
  * @param max_level
  * @return
  */
-    std::vector<unsigned int> get_keypoints_in_cell(camera::base *camera, const keypoint_container &undist_keypts,
+std::vector<std::reference_wrapper<data::keypoint const>> get_keypoints_in_cell(camera::base *camera, const keypoint_container &undist_keypts,
                                                     const std::vector<std::vector<std::vector<unsigned int>>> &keypt_indices_in_cells,
-                                                    const float ref_x, const float ref_y, const float margin,
-                                                    const int min_level = -1, const int max_level = -1, bool only_slam = false);
+                                                    float ref_x, float ref_y, float margin,
+                                                    int min_level = -1, int max_level = -1);
 
 } // namespace data
 } // namespace openvslam

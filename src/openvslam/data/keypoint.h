@@ -10,59 +10,47 @@
 namespace openvslam {
     namespace data {
         struct keypoint {
+            static void reset_id_counter();
+
         public:
             EIGEN_MAKE_ALIGNED_OPERATOR_NEW
             // key: class, value: point coordinates
 //                const std::map<int, std::tuple<int>> pixel_per_class;
 
+            keypoint();
 
+            explicit keypoint(cv::KeyPoint kPoint);
 
-            explicit keypoint(cv::KeyPoint kPoint) : cvKeyPoint(std::move(kPoint)) {
-                orb_descriptor = std::make_shared<std::array<uchar, 32>>();
-            };
+            bool is_applicable_for_slam() const;
 
-            keypoint() {
-                orb_descriptor = std::make_shared<std::array<uchar, 32>>();
-            }
+            void set_applicable_for_slam(bool applicable);
 
-            bool is_applicable_for_slam() const {
-                return applicable_for_slam;
-            }
+            cv::KeyPoint& get_cv_keypoint();
 
-            void set_applicable_for_slam(bool applicable) {
-                applicable_for_slam = applicable;
-            }
+            const cv::KeyPoint& get_cv_keypoint() const;
 
-            cv::KeyPoint& get_cv_keypoint() {
-                return cvKeyPoint;
-            }
+            Eigen::Vector3d get_bearing() const;
 
-            const cv::KeyPoint& get_cv_keypoint() const {
-                return cvKeyPoint;
-            }
+            void set_bearing(const Eigen::Vector3d& bearing);
 
-            Eigen::Vector3d get_bearing() const {
-                return bearing;
-            }
+            std::shared_ptr<std::array<uchar, 32>> get_orb_descriptor();
 
-            void set_bearing(const Eigen::Vector3d bearing) {
-                this->bearing = bearing;
-            }
-
-            std::shared_ptr<std::array<uchar, 32>> get_orb_descriptor() {
-                return orb_descriptor;
-            }
-
-            void set_orb_descriptor(std::shared_ptr<std::array<uchar, 32>> orbDescriptor) {
-                orb_descriptor = orbDescriptor;
-            }
+            void set_orb_descriptor(std::shared_ptr<std::array<uchar, 32>> orbDescriptor);
 
             // TODO testen
-            cv::Mat get_orb_descriptor_as_cv_mat() const {
-                // size is fixed in orb_extractor
-                return cv::Mat(1, 32, CV_8UC1, orb_descriptor.get());
-            }
+            cv::Mat get_orb_descriptor_as_cv_mat() const;
+
+            int get_id() const;
+
+            float get_depth() const;
+
+            void set_depth(float);
+
+            float get_stereo_x_offset() const;
+
+            void set_stereo_x_offset(float);
         protected:
+            int point_id = -1;
             cv::KeyPoint cvKeyPoint;
             int seg_class = -1;
             bool applicable_for_slam = true;
@@ -70,6 +58,11 @@ namespace openvslam {
             Eigen::Vector3d bearing;
             // orb descriptor
             std::shared_ptr<std::array<uchar, 32>> orb_descriptor;
+            float depth = 0;
+            float stereo_x_offset = 0;
+
+        private:
+            static int id_counter;
         };
 
         class keypoint_container : public std::vector<keypoint> {
@@ -97,6 +90,8 @@ namespace openvslam {
             eigen_alloc_vector<Vec3_t> get_slam_applicable_bearings() const;
 
             eigen_alloc_vector<Vec3_t> get_slam_forbidden_bearings() const;
+
+            eigen_alloc_vector <Vec3_t> get_all_bearings() const;
         };
     }
 }

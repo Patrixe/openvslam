@@ -68,9 +68,9 @@ unsigned int fuse::detect_duplication(data::keyframe* keyfrm, const Mat44_t& Sim
         // 3次元点を再投影した点が存在するcellの特徴点を取得
         const int pred_scale_level = lm->predict_scale_level(cam_to_lm_dist, keyfrm);
 
-        const auto indices = keyfrm->get_keypoints_in_cell(reproj(0), reproj(1), margin * keyfrm->scale_factors_.at(pred_scale_level));
+        const auto neighbouring_keypoints = keyfrm->get_keypoints_in_cell(reproj(0), reproj(1), margin * keyfrm->scale_factors_.at(pred_scale_level));
 
-        if (indices.empty()) {
+        if (neighbouring_keypoints.empty()) {
             continue;
         }
 
@@ -78,10 +78,10 @@ unsigned int fuse::detect_duplication(data::keyframe* keyfrm, const Mat44_t& Sim
         const auto lm_desc = lm->get_descriptor();
 
         unsigned int best_dist = MAX_HAMMING_DIST;
-        int best_idx = -1;
+        std::reference_wrapper<const data::keypoint> best_matching_keypoint = neighbouring_keypoints[0];
 
-        for (const auto idx : indices) {
-            const auto scale_level = keyfrm->keypts_.at(idx).get_cv_keypoint().octave;
+        for (const auto neighbouring_keypoint_ref : neighbouring_keypoints) {
+            const auto scale_level = neighbouring_keypoint_ref.get().get_cv_keypoint().octave;
 
             // TODO: keyfrm->get_keypts_in_cell()でスケールの判断をする
             if (scale_level < pred_scale_level - 1 || pred_scale_level < scale_level) {
@@ -89,13 +89,13 @@ unsigned int fuse::detect_duplication(data::keyframe* keyfrm, const Mat44_t& Sim
             }
 
             // TODO pali: Check this. Quick fixed for compilation.
-            const auto& desc = keyfrm->undist_keypts_.at(idx).get_orb_descriptor_as_cv_mat();
+            const auto& desc = neighbouring_keypoint_ref.get().get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 
             if (hamm_dist < best_dist) {
                 best_dist = hamm_dist;
-                best_idx = idx;
+                best_matching_keypoint = neighbouring_keypoint_ref;
             }
         }
 
@@ -103,7 +103,7 @@ unsigned int fuse::detect_duplication(data::keyframe* keyfrm, const Mat44_t& Sim
             continue;
         }
 
-        auto* lm_in_keyfrm = keyfrm->get_landmark(best_idx);
+        auto* lm_in_keyfrm = keyfrm->get_landmark(best_matching_keypoint.get().get_id());
         if (lm_in_keyfrm) {
             // keyframeのbest_idxに対応する3次元点が存在する -> 重複している場合
             if (!lm_in_keyfrm->will_be_erased()) {
@@ -113,8 +113,8 @@ unsigned int fuse::detect_duplication(data::keyframe* keyfrm, const Mat44_t& Sim
         else {
             // keyframeのbest_idxに対応する3次元点が存在しない
             // 観測情報を追加
-            lm->add_observation(keyfrm, best_idx);
-            keyfrm->add_landmark(lm, best_idx);
+            lm->add_observation(keyfrm, best_matching_keypoint.get().get_id());
+            keyfrm->add_landmark(lm, best_matching_keypoint.get().get_id());
         }
 
         ++num_fused;
@@ -175,9 +175,9 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const T& landmark
         // 3次元点を再投影した点が存在するcellの特徴点を取得
         const auto pred_scale_level = lm->predict_scale_level(cam_to_lm_dist, keyfrm);
 
-        const auto indices = keyfrm->get_keypoints_in_cell(reproj(0), reproj(1), margin * keyfrm->scale_factors_.at(pred_scale_level));
+        const auto neighbouring_keypoints = keyfrm->get_keypoints_in_cell(reproj(0), reproj(1), margin * keyfrm->scale_factors_.at(pred_scale_level));
 
-        if (indices.empty()) {
+        if (neighbouring_keypoints.empty()) {
             continue;
         }
 
@@ -185,10 +185,10 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const T& landmark
         const auto lm_desc = lm->get_descriptor();
 
         unsigned int best_dist = MAX_HAMMING_DIST;
-        int best_idx = -1;
+        std::reference_wrapper<const data::keypoint> best_matching_keypoint = neighbouring_keypoints[0];
 
-        for (const auto idx : indices) {
-            const auto& keypt = keyfrm->undist_keypts_.at(idx);
+        for (const auto neighbour_keypoint_ref : neighbouring_keypoints) {
+            const auto& keypt = neighbour_keypoint_ref.get();
 
             const auto scale_level = static_cast<unsigned int>(keypt.get_cv_keypoint().octave);
 
@@ -197,11 +197,11 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const T& landmark
                 continue;
             }
 
-            if (keyfrm->stereo_x_right_.at(idx) >= 0) {
+            if (keypt.get_stereo_x_offset() >= 0) {
                 // stereo matchが存在する場合は自由度3の再投影誤差を計算する
                 const auto e_x = reproj(0) - keypt.get_cv_keypoint().pt.x;
                 const auto e_y = reproj(1) - keypt.get_cv_keypoint().pt.y;
-                const auto e_x_right = x_right - keyfrm->stereo_x_right_.at(idx);
+                const auto e_x_right = x_right - keypt.get_stereo_x_offset();
                 const auto reproj_error_sq = e_x * e_x + e_y * e_y + e_x_right * e_x_right;
 
                 // 自由度n=3
@@ -224,13 +224,13 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const T& landmark
             }
 
             // TODO pali: Check this. Quick fixed for compilation.
-            const auto& desc = keyfrm->undist_keypts_.at(idx).get_orb_descriptor_as_cv_mat();
+            const auto& desc = keypt.get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 
             if (hamm_dist < best_dist) {
                 best_dist = hamm_dist;
-                best_idx = idx;
+                best_matching_keypoint = keypt;
             }
         }
 
@@ -238,7 +238,7 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const T& landmark
             continue;
         }
 
-        auto* lm_in_keyfrm = keyfrm->get_landmark(best_idx);
+        auto* lm_in_keyfrm = keyfrm->get_landmark(best_matching_keypoint.get().get_id());
         if (lm_in_keyfrm) {
             // keyframeのbest_idxに対応する3次元点が存在する -> 重複している場合
             if (!lm_in_keyfrm->will_be_erased()) {
@@ -256,8 +256,8 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const T& landmark
         else {
             // keyframeのbest_idxに対応する3次元点が存在しない
             // 観測情報を追加
-            lm->add_observation(keyfrm, best_idx);
-            keyfrm->add_landmark(lm, best_idx);
+            lm->add_observation(keyfrm, best_matching_keypoint.get().get_id());
+            keyfrm->add_landmark(lm, best_matching_keypoint.get().get_id());
         }
 
         ++num_fused;

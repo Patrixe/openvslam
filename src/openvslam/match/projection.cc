@@ -24,10 +24,10 @@ unsigned int projection::match_frame_and_landmarks(data::frame& frm, const std::
 
         // 3次元点を再投影した点が存在するcellの特徴点を取得
         // TODO pali: This might need adjustment regarding the ids that are returned.
-        const auto indices_in_cell = frm.get_keypoints_in_cell(local_lm->reproj_in_tracking_(0), local_lm->reproj_in_tracking_(1),
+        const auto keypoints_in_cell = frm.get_keypoints_in_cell(local_lm->reproj_in_tracking_(0), local_lm->reproj_in_tracking_(1),
                                                                margin * frm.scale_factors_.at(pred_scale_level),
                                                                pred_scale_level - 1, pred_scale_level);
-        if (indices_in_cell.empty()) {
+        if (keypoints_in_cell.empty()) {
             continue;
         }
 
@@ -37,23 +37,24 @@ unsigned int projection::match_frame_and_landmarks(data::frame& frm, const std::
         int best_scale_level = -1;
         unsigned int second_best_hamm_dist = MAX_HAMMING_DIST;
         int second_best_scale_level = -1;
-        int best_idx = -1;
+        std::reference_wrapper<const data::keypoint> best_matching_keypoint = keypoints_in_cell[0];
 
         // TODO pali: Check if the logic in here is coherent with the split of points (and subsequently ids which are simply counted up)
-        for (const auto idx : indices_in_cell) {
-            if (frm.landmarks_.at(idx) && frm.landmarks_.at(idx)->has_observation()) {
+        for (const auto neighbouring_keypoint_ref : keypoints_in_cell) {
+            auto neighbouring_keypoint = neighbouring_keypoint_ref.get();
+            if (frm.landmarks_.at(neighbouring_keypoint.get_id()) && frm.landmarks_.at(neighbouring_keypoint.get_id())->has_observation()) {
                 continue;
             }
 
-            if (0 < frm.stereo_x_right_.at(idx)) {
-                const auto reproj_error = std::abs(local_lm->x_right_in_tracking_ - frm.stereo_x_right_.at(idx));
+            if (neighbouring_keypoint.get_stereo_x_offset() > 0) {
+                const auto reproj_error = std::abs(local_lm->x_right_in_tracking_ - neighbouring_keypoint.get_stereo_x_offset());
                 if (margin * frm.scale_factors_.at(pred_scale_level) < reproj_error) {
                     continue;
                 }
             }
 
             // TODO pali: check this, just quick fixed for compilation
-            const cv::Mat& desc = frm.undist_keypts_.at(idx).get_orb_descriptor_as_cv_mat();
+            const cv::Mat& desc = neighbouring_keypoint.get_orb_descriptor_as_cv_mat();
 
             const auto dist = compute_descriptor_distance_32(lm_desc, desc);
 
@@ -61,11 +62,11 @@ unsigned int projection::match_frame_and_landmarks(data::frame& frm, const std::
                 second_best_hamm_dist = best_hamm_dist;
                 best_hamm_dist = dist;
                 second_best_scale_level = best_scale_level;
-                best_scale_level = frm.undist_keypts_.at(idx).get_cv_keypoint().octave;
-                best_idx = idx;
+                best_scale_level = neighbouring_keypoint.get_cv_keypoint().octave;
+                best_matching_keypoint = neighbouring_keypoint;
             }
             else if (dist < second_best_hamm_dist) {
-                second_best_scale_level = frm.undist_keypts_.at(idx).get_cv_keypoint().octave;
+                second_best_scale_level = neighbouring_keypoint.get_cv_keypoint().octave;
                 second_best_hamm_dist = dist;
             }
         }
@@ -77,7 +78,7 @@ unsigned int projection::match_frame_and_landmarks(data::frame& frm, const std::
             }
 
             // 対応情報を追加
-            frm.landmarks_.at(best_idx) = local_lm;
+            frm.landmarks_.at(best_matching_keypoint.get().get_id()) = local_lm;
             ++num_matches;
         }
     }
@@ -139,51 +140,52 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
         const auto last_scale_level = last_frm.keypts_.at(idx_last).get_cv_keypoint().octave;
 
         // 3次元点を再投影した点が存在するcellの特徴点を取得
-        std::vector<unsigned int> indices;
+        std::vector<std::reference_wrapper<const data::keypoint>> keypoints_in_cell;
         if (assume_forward) {
-            indices = curr_frm.get_keypoints_in_cell(reproj(0), reproj(1),
+            keypoints_in_cell = curr_frm.get_keypoints_in_cell(reproj(0), reproj(1),
                                                      margin * curr_frm.scale_factors_.at(last_scale_level),
-                                                     last_scale_level, last_frm.num_scale_levels_ - 1);
+                                                               last_scale_level, last_frm.num_scale_levels_ - 1);
         }
         else if (assume_backward) {
-            indices = curr_frm.get_keypoints_in_cell(reproj(0), reproj(1),
+            keypoints_in_cell = curr_frm.get_keypoints_in_cell(reproj(0), reproj(1),
                                                      margin * curr_frm.scale_factors_.at(last_scale_level),
-                                                     0, last_scale_level);
+                                                               0, last_scale_level);
         }
         else {
-            indices = curr_frm.get_keypoints_in_cell(reproj(0), reproj(1),
+            keypoints_in_cell = curr_frm.get_keypoints_in_cell(reproj(0), reproj(1),
                                                      margin * curr_frm.scale_factors_.at(last_scale_level),
                                                      last_scale_level - 1, last_scale_level + 1);
         }
-        if (indices.empty()) {
+        if (keypoints_in_cell.empty()) {
             continue;
         }
 
         const auto lm_desc = lm->get_descriptor();
 
         unsigned int best_hamm_dist = MAX_HAMMING_DIST;
-        int best_idx = -1;
+        std::reference_wrapper<const data::keypoint> best_matching_keypoint = keypoints_in_cell[0];
 
-        for (const auto curr_idx : indices) {
-            if (curr_frm.landmarks_.at(curr_idx) && curr_frm.landmarks_[curr_idx]->has_observation()) {
+        for (const auto neighbouring_keypoint_ref : keypoints_in_cell) {
+            auto neighbouring_keypoint = neighbouring_keypoint_ref.get();
+            if (curr_frm.landmarks_.at(neighbouring_keypoint.get_id()) && curr_frm.landmarks_[neighbouring_keypoint.get_id()]->has_observation()) {
                 continue;
             }
 
-            if (curr_frm.stereo_x_right_.at(curr_idx) > 0) {
-                const float reproj_error = std::fabs(x_right - curr_frm.stereo_x_right_.at(curr_idx));
+            if (neighbouring_keypoint.get_stereo_x_offset() > 0) {
+                const float reproj_error = std::fabs(x_right - neighbouring_keypoint.get_stereo_x_offset());
                 if (margin * curr_frm.scale_factors_.at(last_scale_level) < reproj_error) {
                     continue;
                 }
             }
 
             // TODO pali: check this. Just quick fixed for compilation
-            const auto& desc = curr_frm.undist_keypts_.at(curr_idx).get_orb_descriptor_as_cv_mat();
+            const auto& desc = neighbouring_keypoint.get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 
             if (hamm_dist < best_hamm_dist) {
                 best_hamm_dist = hamm_dist;
-                best_idx = curr_idx;
+                best_matching_keypoint = neighbouring_keypoint;
             }
         }
 
@@ -192,13 +194,13 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
         }
 
         // 有効なmatchingとする
-        curr_frm.landmarks_.at(best_idx) = lm;
+        curr_frm.landmarks_.at(best_matching_keypoint.get().get_id()) = lm;
         ++num_matches;
 
         if (check_orientation_) {
             const auto delta_angle
-                = last_frm.undist_keypts_.at(idx_last).get_cv_keypoint().angle - curr_frm.undist_keypts_.at(best_idx).get_cv_keypoint().angle;
-            angle_checker.append_delta_angle(delta_angle, best_idx);
+                = last_frm.undist_keypts_.at(idx_last).get_cv_keypoint().angle - best_matching_keypoint.get().get_cv_keypoint().angle;
+            angle_checker.append_delta_angle(delta_angle, best_matching_keypoint.get().get_id());
         }
     }
 
@@ -263,32 +265,33 @@ unsigned int projection::match_frame_and_keyframe(data::frame& curr_frm, data::k
         // 3次元点を再投影した点が存在するcellの特徴点を取得
         const auto pred_scale_level = lm->predict_scale_level(cam_to_lm_dist, &curr_frm);
 
-        const auto indices = curr_frm.get_keypoints_in_cell(reproj(0), reproj(1),
+        const auto keypoints_in_cell = curr_frm.get_keypoints_in_cell(reproj(0), reproj(1),
                                                             margin * curr_frm.scale_factors_.at(pred_scale_level),
                                                             pred_scale_level - 1, pred_scale_level + 1);
 
-        if (indices.empty()) {
+        if (keypoints_in_cell.empty()) {
             continue;
         }
 
         const auto lm_desc = lm->get_descriptor();
 
         unsigned int best_hamm_dist = MAX_HAMMING_DIST;
-        int best_idx = -1;
+        std::reference_wrapper<const data::keypoint> best_matching_keypoint = keypoints_in_cell[0];
 
-        for (unsigned long curr_idx : indices) {
-            if (curr_frm.landmarks_.at(curr_idx)) {
+        for (const auto neighbouring_keypoint_ref : keypoints_in_cell) {
+            auto neighbouring_keypoint = neighbouring_keypoint_ref.get();
+            if (curr_frm.landmarks_.at(neighbouring_keypoint.get_id())) {
                 continue;
             }
 
             // TODO pali: Check this. Just quick fixed for compilation.
-            const auto& desc = curr_frm.undist_keypts_.at(curr_idx).get_orb_descriptor_as_cv_mat();
+            const auto& desc = neighbouring_keypoint.get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 
             if (hamm_dist < best_hamm_dist) {
                 best_hamm_dist = hamm_dist;
-                best_idx = curr_idx;
+                best_matching_keypoint = neighbouring_keypoint;
             }
         }
 
@@ -297,17 +300,18 @@ unsigned int projection::match_frame_and_keyframe(data::frame& curr_frm, data::k
             continue;
         }
 
-        curr_frm.landmarks_.at(best_idx) = lm;
+        curr_frm.landmarks_.at(best_matching_keypoint.get().get_id()) = lm;
         num_matches++;
 
         if (check_orientation_) {
             const auto delta_angle
-                = keyfrm->undist_keypts_.at(idx).get_cv_keypoint().angle - curr_frm.undist_keypts_.at(best_idx).get_cv_keypoint().angle;
-            angle_checker.append_delta_angle(delta_angle, best_idx);
+                = keyfrm->undist_keypts_.at(idx).get_cv_keypoint().angle - best_matching_keypoint.get().get_cv_keypoint().angle;
+            angle_checker.append_delta_angle(delta_angle, best_matching_keypoint.get().get_id());
         }
     }
 
     if (check_orientation_) {
+        // TODO pali: In all methods, this is not correct anymore. Need to use point ids, not indices
         const auto invalid_matches = angle_checker.get_invalid_matches();
         for (const auto invalid_idx : invalid_matches) {
             curr_frm.landmarks_.at(invalid_idx) = nullptr;
@@ -373,9 +377,9 @@ unsigned int projection::match_by_Sim3_transform(data::keyframe* keyfrm, const M
         // 3次元点を再投影した点が存在するcellの特徴点を取得
         const auto pred_scale_level = lm->predict_scale_level(cam_to_lm_dist, keyfrm);
 
-        const auto indices = keyfrm->get_keypoints_in_cell(reproj(0), reproj(1), margin * keyfrm->scale_factors_.at(pred_scale_level));
+        const auto keypoints_in_cell = keyfrm->get_keypoints_in_cell(reproj(0), reproj(1), margin * keyfrm->scale_factors_.at(pred_scale_level));
 
-        if (indices.empty()) {
+        if (keypoints_in_cell.empty()) {
             continue;
         }
 
@@ -383,27 +387,28 @@ unsigned int projection::match_by_Sim3_transform(data::keyframe* keyfrm, const M
         const auto lm_desc = lm->get_descriptor();
 
         unsigned int best_dist = MAX_HAMMING_DIST;
-        int best_idx = -1;
+        std::reference_wrapper<const data::keypoint> best_matching_keypoint = keypoints_in_cell[0];
 
-        for (const auto idx : indices) {
-            if (matched_lms_in_keyfrm.at(idx)) {
+        for (const auto neighbouring_keypoint_ref : keypoints_in_cell) {
+            auto neighbouring_keypoint = neighbouring_keypoint_ref.get();
+            if (matched_lms_in_keyfrm.at(neighbouring_keypoint.get_id())) {
                 continue;
             }
 
-            const auto scale_level = static_cast<unsigned int>(keyfrm->keypts_.at(idx).get_cv_keypoint().octave);
+            const auto scale_level = static_cast<unsigned int>(neighbouring_keypoint.get_cv_keypoint().octave);
 
             // TODO: keyfrm->get_keypts_in_cell()でスケールの判断をする
             if (scale_level < pred_scale_level - 1 || pred_scale_level < scale_level) {
                 continue;
             }
 
-            const auto& desc = keyfrm->undist_keypts_.at(idx).get_orb_descriptor_as_cv_mat();
+            const auto& desc = neighbouring_keypoint.get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 
             if (hamm_dist < best_dist) {
                 best_dist = hamm_dist;
-                best_idx = idx;
+                best_matching_keypoint = neighbouring_keypoint;
             }
         }
 
@@ -411,7 +416,7 @@ unsigned int projection::match_by_Sim3_transform(data::keyframe* keyfrm, const M
             continue;
         }
 
-        matched_lms_in_keyfrm.at(best_idx) = lm;
+        matched_lms_in_keyfrm.at(best_matching_keypoint.get().get_id()) = lm;
         ++num_matches;
     }
 
@@ -502,9 +507,9 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
             // 3次元点を再投影した点が存在するcellの特徴点を取得
             const auto pred_scale_level = lm->predict_scale_level(cam_to_lm_dist, keyfrm_2);
 
-            const auto indices = keyfrm_2->get_keypoints_in_cell(reproj(0), reproj(1), margin * keyfrm_2->scale_factors_.at(pred_scale_level));
+            const auto keypoints_in_cell = keyfrm_2->get_keypoints_in_cell(reproj(0), reproj(1), margin * keyfrm_2->scale_factors_.at(pred_scale_level));
 
-            if (indices.empty()) {
+            if (keypoints_in_cell.empty()) {
                 continue;
             }
 
@@ -512,28 +517,29 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
             const auto lm_desc = lm->get_descriptor();
 
             unsigned int best_hamm_dist = MAX_HAMMING_DIST;
-            int best_idx_2 = -1;
+            std::reference_wrapper<const data::keypoint> best_matching_keypoint = keypoints_in_cell[0];
 
-            for (const auto idx_2 : indices) {
-                const auto scale_level = static_cast<unsigned int>(keyfrm_2->keypts_.at(idx_2).get_cv_keypoint().octave);
+            for (const auto neighbouring_keypoint_ref : keypoints_in_cell) {
+                auto neighbouring_keypoint = neighbouring_keypoint_ref.get();
+                const auto scale_level = static_cast<unsigned int>(neighbouring_keypoint.get_cv_keypoint().octave);
 
                 // TODO: keyfrm->get_keypts_in_cell()でスケールの判断をする
                 if (scale_level < pred_scale_level - 1 || pred_scale_level < scale_level) {
                     continue;
                 }
 
-                const auto& desc = keyfrm_2->undist_keypts_.at(idx_2).get_orb_descriptor_as_cv_mat();
+                const auto& desc = neighbouring_keypoint.get_orb_descriptor_as_cv_mat();
 
                 const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 
                 if (hamm_dist < best_hamm_dist) {
                     best_hamm_dist = hamm_dist;
-                    best_idx_2 = idx_2;
+                    best_matching_keypoint = neighbouring_keypoint;
                 }
             }
 
             if (best_hamm_dist <= HAMMING_DIST_THR_HIGH) {
-                matched_indices_2_in_keyfrm_1.at(idx_1) = best_idx_2;
+                matched_indices_2_in_keyfrm_1.at(idx_1) = best_matching_keypoint.get().get_id();
             }
         }
     }
@@ -585,9 +591,9 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
             // 3次元点を再投影した点が存在するcellの特徴点を取得
             const auto pred_scale_level = lm->predict_scale_level(cam_to_lm_dist, keyfrm_1);
 
-            const auto indices = keyfrm_1->get_keypoints_in_cell(reproj(0), reproj(1), margin * keyfrm_1->scale_factors_.at(pred_scale_level));
+            const auto keypoints_in_cell = keyfrm_1->get_keypoints_in_cell(reproj(0), reproj(1), margin * keyfrm_1->scale_factors_.at(pred_scale_level));
 
-            if (indices.empty()) {
+            if (keypoints_in_cell.empty()) {
                 continue;
             }
 
@@ -595,28 +601,30 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
             const auto lm_desc = lm->get_descriptor();
 
             unsigned int best_hamm_dist = MAX_HAMMING_DIST;
-            int best_idx_1 = -1;
+            std::reference_wrapper<const data::keypoint> best_matching_keypoint = keypoints_in_cell[0];
 
-            for (const auto idx_1 : indices) {
-                const auto scale_level = static_cast<unsigned int>(keyfrm_1->keypts_.at(idx_1).get_cv_keypoint().octave);
+            for (const auto neighbouring_keypoint_ref : keypoints_in_cell) {
+                auto neighbouring_keypoint = neighbouring_keypoint_ref.get();
+
+                const auto scale_level = static_cast<unsigned int>(neighbouring_keypoint.get_cv_keypoint().octave);
 
                 // TODO: keyfrm->get_keypts_in_cell()でスケールの判断をする
                 if (scale_level < pred_scale_level - 1 || pred_scale_level < scale_level) {
                     continue;
                 }
 
-                const auto& desc = keyfrm_1->undist_keypts_.at(idx_1).get_orb_descriptor_as_cv_mat();
+                const auto& desc = neighbouring_keypoint.get_orb_descriptor_as_cv_mat();
 
                 const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
 
                 if (hamm_dist < best_hamm_dist) {
                     best_hamm_dist = hamm_dist;
-                    best_idx_1 = idx_1;
+                    best_matching_keypoint = neighbouring_keypoint;
                 }
             }
 
             if (best_hamm_dist <= HAMMING_DIST_THR_HIGH) {
-                matched_indices_1_in_keyfrm_2.at(idx_2) = best_idx_1;
+                matched_indices_1_in_keyfrm_2.at(idx_2) = best_matching_keypoint.get().get_id();
             }
         }
     }

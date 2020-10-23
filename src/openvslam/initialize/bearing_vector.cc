@@ -18,20 +18,32 @@ bearing_vector::~bearing_vector() {
     spdlog::debug("DESTRUCT: initialize::bearing_vector");
 }
 
-bool bearing_vector::initialize(const data::frame& cur_frm, const std::vector<int>& ref_matches_with_cur) {
+bool bearing_vector::initialize(const data::frame& cur_frm, const std::map<int, std::pair<data::keypoint, data::keypoint>> &ref_matches_with_cur) {
     // set the current camera model
     cur_camera_ = cur_frm.camera_;
     // store the keypoints and bearings
-    cur_undist_keypts_ = cur_frm.undist_keypts_.get_slam_applicable_cv_keypoints();
-    cur_bearings_ = cur_frm.undist_keypts_.get_slam_applicable_bearings();
+    cur_undist_keypts_.reserve(ref_matches_with_cur.size());
+    cur_bearings_.reserve(ref_matches_with_cur.size());
+
+    ref_undist_keypts_.reserve(ref_matches_with_cur.size());
+    ref_bearings_.reserve(ref_matches_with_cur.size());
+
     // align matching information
     ref_cur_matches_.clear();
-    ref_cur_matches_.reserve(cur_undist_keypts_.size());
-    for (unsigned int ref_idx = 0; ref_idx < ref_matches_with_cur.size(); ++ref_idx) {
-        const auto cur_idx = ref_matches_with_cur.at(ref_idx);
-        if (0 <= cur_idx) {
-            ref_cur_matches_.emplace_back(std::make_pair(ref_idx, cur_idx));
-        }
+    ref_cur_matches_.reserve(ref_matches_with_cur.size());
+
+    int running_index = 0;
+    for (const std::pair<int, std::pair<data::keypoint, data::keypoint>> match : ref_matches_with_cur) {
+        // add points to the lists of point an bearing. We dont need all points of a frame, as only matches are taken into account
+        ref_undist_keypts_.emplace_back(match.second.first.get_cv_keypoint());
+        ref_bearings_.emplace_back(match.second.first.get_bearing());
+        // same for current frame
+        cur_undist_keypts_.emplace_back(match.second.second.get_cv_keypoint());
+        cur_bearings_.emplace_back(match.second.second.get_bearing());
+        // lastly register as match. Since we technically inserted the points ordered, it looks strange.
+        ref_cur_matches_.emplace_back(std::make_pair(running_index, running_index));
+
+        running_index++;
     }
 
     // compute an E matrix

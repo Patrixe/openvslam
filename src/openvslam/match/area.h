@@ -5,27 +5,27 @@
 
 namespace openvslam {
 
-namespace data {
-class frame;
-} // namespace data
+    namespace data {
+        class frame;
+    } // namespace data
 
-namespace match {
+    namespace match {
 
-class area final : public base {
-public:
-    area(const float lowe_ratio, const bool check_orientation)
-        : base(lowe_ratio, check_orientation) {}
+        class area final : public base {
+        public:
+            area(const float lowe_ratio, const bool check_orientation)
+                    : base(lowe_ratio, check_orientation) {}
 
-    ~area() final = default;
+            ~area() final = default;
 
-    unsigned int match_in_consistent_area(data::frame &frm_1, data::frame &frm_2,
-                                          std::vector<cv::Point2f> &prev_matched_pts,
-                                          std::vector<int> &matched_indices_2_in_frm_1, int margin,
-                                          const std::vector<cv::KeyPoint> &frame_1_slam_cv_points,
-                                          const std::vector<cv::KeyPoint> &frame_2_slam_cv_points);
-};
+            unsigned int match_in_consistent_area(data::frame &frm_2, std::map<int, cv::Point2f> &prev_matched_pts,
+                                                  std::map<int, std::pair<data::keypoint, data::keypoint>> &found_matches,
+                                                  int margin,
+                                                  const std::vector<data::keypoint> &frame_1_slam_cv_points,
+                                                  const std::vector<data::keypoint> &frame_2_slam_cv_points);
+        };
 
-} // namespace match
+    } // namespace match
 } // namespace openvslam
 
 #endif // OPENVSLAM_MATCH_AREA_H

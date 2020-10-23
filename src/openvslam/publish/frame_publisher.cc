@@ -24,7 +24,7 @@ cv::Mat frame_publisher::draw_frame(const bool draw_text) {
     cv::Mat img;
     tracker_state_t tracking_state;
     data::keypoint_container init_keypts;
-    std::vector<int> init_matches;
+    std::map<int, std::pair<data::keypoint, data::keypoint>> init_matches;
     data::keypoint_container curr_keypts;
     double elapsed_ms;
     bool mapping_is_enabled;
@@ -88,19 +88,20 @@ cv::Mat frame_publisher::draw_frame(const bool draw_text) {
     return img;
 }
 
-unsigned int frame_publisher::draw_initial_points(cv::Mat& img, const data::keypoint_container &init_keypts,
-                                                  const std::vector<int>& init_matches, const data::keypoint_container &curr_keypts,
+unsigned int frame_publisher::draw_initial_points(cv::Mat &img, const data::keypoint_container &init_keypts,
+                                                  const std::map<int, std::pair<data::keypoint, data::keypoint>> &init_matches,
+                                                  const data::keypoint_container &curr_keypts,
                                                   const float mag) const {
     unsigned int num_tracked = 0;
 
-    for (unsigned int i = 0; i < init_matches.size(); ++i) {
-        if (init_matches.at(i) < 0) {
-            continue;
-        }
+    for (auto match : init_matches) {
+        const cv::Point_<float> &init_point = match.second.first.get_cv_keypoint().pt * mag;
+        cv::circle(img, init_point, 2, mapping_color_, -1);
 
-        cv::circle(img, init_keypts.at(i).get_cv_keypoint().pt * mag, 2, mapping_color_, -1);
-        cv::circle(img, curr_keypts.at(init_matches.at(i)).get_cv_keypoint().pt * mag, 2, mapping_color_, -1);
-        cv::line(img, init_keypts.at(i).get_cv_keypoint().pt * mag, curr_keypts.at(init_matches.at(i)).get_cv_keypoint().pt * mag, mapping_color_);
+        const cv::Point_<float> &current_frame_point = match.second.second.get_cv_keypoint().pt * mag;
+        cv::circle(img, current_frame_point, 2, mapping_color_, -1);
+
+        cv::line(img, init_point, current_frame_point, mapping_color_);
 
         ++num_tracked;
     }

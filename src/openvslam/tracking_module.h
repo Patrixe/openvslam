@@ -71,7 +71,7 @@ public:
     data::keypoint_container get_initial_keypoints() const;
 
     //! Get the keypoint matches between the initial frame and the current frame
-    std::vector<int> get_initial_matches() const;
+    const std::map<int, std::pair<data::keypoint, data::keypoint>> get_initial_matches() const;
 
     //! Track a monocular frame
     //! (NOTE: distorted images are acceptable if calibrated)

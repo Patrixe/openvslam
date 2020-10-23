@@ -10,8 +10,10 @@ namespace openvslam {
                    const unsigned int num_ransac_iters, const unsigned int min_num_triangulated,
                    const float parallax_deg_thr, const float reproj_err_thr)
                 : ref_camera_(ref_frm.camera_),
-                  ref_undist_keypts_(ref_frm.undist_keypts_.get_slam_applicable_cv_keypoints()),
-                  ref_bearings_(ref_frm.undist_keypts_.get_slam_applicable_bearings()),
+//                  ref_undist_keypts_(ref_frm.undist_keypts_.get_slam_applicable_cv_keypoints()),
+//                  ref_bearings_(ref_frm.undist_keypts_.get_slam_applicable_bearings()),
+                  ref_undist_keypts_(),
+                  ref_bearings_(),
                   num_ransac_iters_(num_ransac_iters), min_num_triangulated_(min_num_triangulated),
                   parallax_deg_thr_(parallax_deg_thr), reproj_err_thr_(reproj_err_thr) {}
 
@@ -115,7 +117,6 @@ namespace openvslam {
                     continue;
                 }
 
-                // TODO does not work... does it?0
                 const Vec3_t &ref_bearing = ref_bearings_.at(ref_cur_matches_.at(i).first);
                 const Vec3_t &cur_bearing = cur_bearings_.at(ref_cur_matches_.at(i).second);
 
@@ -201,15 +202,10 @@ namespace openvslam {
             return num_valid_pts;
         }
 
-        void base::apply_transformation_to_points(const std::vector<data::keypoint> &cur_points,
-                                                  const std::vector<data::keypoint> &ref_points,
-                                                  std::vector<std::pair<int, int>> &ref_current_matches,
-                                                  eigen_alloc_vector<Vec3_t> &triangulated_pts) {
+        void base::apply_transformation_to_points(
+                std::map<int, std::pair<data::keypoint, data::keypoint>> ref_current_matches,
+                std::map<int, Vec3_t> &triangulated_pts) {
             const float reproj_err_thr_sq = reproj_err_thr_ * reproj_err_thr_;
-
-            // resize buffers according to the number of observed keypoints in the reference
-            triangulated_pts.resize(ref_current_matches.size());
-
             std::vector<float> cos_parallaxes;
             cos_parallaxes.reserve(ref_current_matches.size());
 
@@ -226,9 +222,9 @@ namespace openvslam {
             unsigned int num_valid_pts = 0;
 
             // for each matching, triangulate a 3D point and compute a parallax and a reprojection error
-            for (unsigned int i = 0; i < ref_current_matches.size(); ++i) {
-                const Vec3_t &ref_bearing = ref_points.at(ref_current_matches.at(i).first).get_bearing();
-                const Vec3_t &cur_bearing = cur_points.at(ref_current_matches.at(i).second).get_bearing();
+            for (auto match : ref_current_matches) {
+                const Vec3_t &ref_bearing = match.second.first.get_bearing();
+                const Vec3_t &cur_bearing = match.second.second.get_bearing();
 
                 const Vec3_t pos_c_in_ref = solve::triangulator::triangulate(ref_bearing, cur_bearing, rotationRefToCur,
                                                                              translationRefToCur);
@@ -257,8 +253,8 @@ namespace openvslam {
                     continue;
                 }
 
-                const auto &ref_undist_keypt = ref_points.at(ref_cur_matches_.at(i).first).get_cv_keypoint();
-                const auto &cur_undist_keypt = cur_points.at(ref_cur_matches_.at(i).second).get_cv_keypoint();
+                const auto &ref_undist_keypt = match.second.first.get_cv_keypoint();
+                const auto &cur_undist_keypt = match.second.second.get_cv_keypoint();
 
                 // compute a reprojection error in the reference
                 Vec2_t reproj_in_ref;
@@ -293,7 +289,7 @@ namespace openvslam {
                 ++num_valid_pts;
                 cos_parallaxes.push_back(cos_parallax);
                 if (!parallax_is_small) {
-                    triangulated_pts.at(ref_current_matches.at(i).first) = pos_c_in_ref;
+                    triangulated_pts[match.first] = pos_c_in_ref;
                 }
             }
         }

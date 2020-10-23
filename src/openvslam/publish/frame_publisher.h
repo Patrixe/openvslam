@@ -46,7 +46,7 @@ public:
 
 protected:
     unsigned int draw_initial_points(cv::Mat& img, const data::keypoint_container &init_keypts,
-                                     const std::vector<int>& init_matches, const data::keypoint_container &curr_keypts,
+                                     const std::map<int, std::pair<data::keypoint, data::keypoint>> &init_matches, const data::keypoint_container &curr_keypts,
                                      const float mag = 1.0) const;
 
     unsigned int draw_tracked_points(cv::Mat& img, const data::keypoint_container &curr_keypts,
@@ -79,7 +79,7 @@ protected:
     //! initial keypoints
     data::keypoint_container init_keypts_;
     //! matching between initial frame and current frame
-    std::vector<int> init_matches_;
+    std::map<int, std::pair<data::keypoint, data::keypoint>> init_matches_;
 
     //! current keypoints
     data::keypoint_container curr_keypts_;

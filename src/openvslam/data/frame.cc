@@ -200,9 +200,9 @@ bool frame::can_observe(landmark* lm, const float ray_cos_thr,
     return true;
 }
 
-std::vector<unsigned int> frame::get_keypoints_in_cell(const float ref_x, const float ref_y, const float margin, const int min_level, const int max_level) const {
+std::vector<std::reference_wrapper<const data::keypoint>> frame::get_keypoints_in_cell(const float ref_x, const float ref_y, const float margin, const int min_level, const int max_level) const {
     return data::get_keypoints_in_cell(camera_, undist_keypts_, keypt_indices_in_cells_, ref_x, ref_y, margin,
-                                       min_level, max_level, true);
+                                       min_level, max_level);
 }
 
 Vec3_t frame::triangulate_stereo(const unsigned int idx) {
@@ -264,6 +264,9 @@ void frame::extract_orb(const cv::Mat& img, const cv::Mat& mask, const image_sid
             break;
         }
     }
+
+    // quick n dirty
+    keypoint::reset_id_counter();
 }
 
 void frame::compute_stereo_from_depth(const cv::Mat& right_img_depth) {
@@ -286,8 +289,11 @@ void frame::compute_stereo_from_depth(const cv::Mat& right_img_depth) {
             continue;
         }
 
+        // TODO pali: Use only the keypoint version.
         depths_.at(idx) = depth;
+        undist_keypt.set_depth(depth);
         stereo_x_right_.at(idx) = undist_keypt.get_cv_keypoint().pt.x - camera_->focal_x_baseline_ / depth;
+        undist_keypt.set_stereo_x_offset(stereo_x_right_.at(idx));
     }
 }
 } // namespace data

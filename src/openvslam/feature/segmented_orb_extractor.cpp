@@ -316,8 +316,7 @@ namespace openvslam {
 
         void segmented_orb_extractor::apply_segmentation_information(data::keypoint_container &keypts_in_cell,
                                                                         const cv::Mat &segmentation_information,
-                                                                        float scale_factor,
-                int offset_x, int offset_y) {
+                                                                        float scale_factor, int offset_x, int offset_y) {
             for (auto &keypoint : keypts_in_cell) {
                 if (!this->seg_cfg->allowed_for_landmark(
                         segmentation_information.at<uchar>((keypoint.get_cv_keypoint().pt.y + offset_y) * scale_factor,

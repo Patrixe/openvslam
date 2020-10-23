@@ -1,5 +1,4 @@
 #include "openvslam/data/common.h"
-#include "openvslam/data/keypoint.h"
 
 #include <nlohmann/json.hpp>
 
@@ -131,11 +130,11 @@ auto assign_keypoints_to_grid(camera::base* camera, const std::vector<cv::KeyPoi
     return keypt_indices_in_cells;
 }
 
-std::vector<unsigned int> get_keypoints_in_cell(camera::base *camera, const keypoint_container &undist_keypts,
+std::vector<std::reference_wrapper<data::keypoint const>> get_keypoints_in_cell(camera::base *camera, const keypoint_container &undist_keypts,
                                                 const std::vector<std::vector<std::vector<unsigned int>>> &keypt_indices_in_cells,
                                                 const float ref_x, const float ref_y, const float margin,
-                                                const int min_level, const int max_level, bool only_slam) {
-    std::vector<unsigned int> indices;
+                                                const int min_level, const int max_level) {
+    std::vector<std::reference_wrapper<data::keypoint const>> indices;
     indices.reserve(undist_keypts.size());
 
     const int min_cell_idx_x = std::max(0, cvFloor((ref_x - camera->img_bounds_.min_x_ - margin) * camera->inv_cell_width_));
@@ -169,9 +168,6 @@ std::vector<unsigned int> get_keypoints_in_cell(camera::base *camera, const keyp
 
             for (unsigned int idx : keypt_indices_in_cell) {
                 const auto& undist_keypt = undist_keypts.at(idx);
-                if (only_slam && !undist_keypt.is_applicable_for_slam()) {
-                    continue;
-                }
 
                 if (check_level) {
                     if (undist_keypt.get_cv_keypoint().octave < min_level) {
@@ -186,7 +182,7 @@ std::vector<unsigned int> get_keypoints_in_cell(camera::base *camera, const keyp
                 const float dist_y = undist_keypt.get_cv_keypoint().pt.y - ref_y;
 
                 if (std::abs(dist_x) < margin && std::abs(dist_y) < margin) {
-                    indices.push_back(idx);
+                    indices.push_back(undist_keypt);
                 }
             }
         }

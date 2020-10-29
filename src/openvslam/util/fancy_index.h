@@ -2,6 +2,8 @@
 #define OPENVSLAM_UTIL_FANCY_INDEX_H
 
 #include "openvslam/type.h"
+#include <openvslam/data/keypoint.h>
+#include <openvslam/data/landmark.h>
 
 #include <vector>
 #include <type_traits>
@@ -64,6 +66,10 @@ eigen_alloc_vector<T> resample_by_indices(const eigen_alloc_vector<T>& elements,
 
     return resampled;
 }
+
+std::vector<data::landmark*> resample_by_indices(const std::map<int, data::landmark*> &elements, const std::vector<unsigned int>& indices);
+std::vector<cv::KeyPoint> resample_by_indices(const std::map<int, data::keypoint> &elements, const std::vector<unsigned int>& indices);
+eigen_alloc_vector<Vec3_t> resample_by_indices(const eigen_alloc_map<int, Vec3_t> &elements, const std::vector<unsigned int>& indices);
 
 } // namespace util
 } // namespace openvslam

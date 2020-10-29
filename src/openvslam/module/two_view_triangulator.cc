@@ -18,16 +18,16 @@ two_view_triangulator::two_view_triangulator(data::keyframe* keyfrm_1, data::key
 
 bool two_view_triangulator::triangulate(const unsigned idx_1, const unsigned int idx_2, Vec3_t& pos_w) const {
     const auto& keypt_1 = keyfrm_1_->undist_keypts_.at(idx_1);
-    const float keypt_1_x_right = keyfrm_1_->stereo_x_right_.at(idx_1);
+    const float keypt_1_x_right = keypt_1.get_stereo_x_offset();
     const bool is_stereo_1 = 0 <= keypt_1_x_right;
 
     const auto& keypt_2 = keyfrm_2_->undist_keypts_.at(idx_2);
-    const float keypt_2_x_right = keyfrm_2_->stereo_x_right_.at(idx_2);
+    const float keypt_2_x_right = keypt_2.get_stereo_x_offset();
     const bool is_stereo_2 = 0 <= keypt_2_x_right;
 
     // rays with reference of each camera
-    const Vec3_t ray_c_1 = keyfrm_1_->undist_keypts_.at(idx_1).get_bearing();
-    const Vec3_t ray_c_2 = keyfrm_2_->undist_keypts_.at(idx_2).get_bearing();
+    const Vec3_t ray_c_1 = keypt_1.get_bearing();
+    const Vec3_t ray_c_2 = keypt_2.get_bearing();
     // rays with the world reference
     const Vec3_t ray_w_1 = rot_w1_ * ray_c_1;
     const Vec3_t ray_w_2 = rot_w2_ * ray_c_2;
@@ -35,10 +35,10 @@ bool two_view_triangulator::triangulate(const unsigned idx_1, const unsigned int
 
     // compute the stereo parallax if the keypoint is observed as stereo
     const auto cos_stereo_parallax_1 = is_stereo_1
-                                           ? std::cos(2.0 * atan2(camera_1_->true_baseline_ / 2.0, keyfrm_1_->depths_.at(idx_1)))
+                                           ? std::cos(2.0 * atan2(camera_1_->true_baseline_ / 2.0, keypt_1.get_depth()))
                                            : 2.0;
     const auto cos_stereo_parallax_2 = is_stereo_2
-                                           ? std::cos(2.0 * atan2(camera_2_->true_baseline_ / 2.0, keyfrm_2_->depths_.at(idx_2)))
+                                           ? std::cos(2.0 * atan2(camera_2_->true_baseline_ / 2.0, keypt_2.get_depth()))
                                            : 2.0;
     const auto cos_stereo_parallax = std::min(cos_stereo_parallax_1, cos_stereo_parallax_2);
 

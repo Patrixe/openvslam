@@ -97,12 +97,12 @@ data::keyframe* keyframe_inserter::insert_new_keyframe(data::frame& curr_frm) {
 
     // 有効なdepthとそのindexを格納する
     std::vector<std::pair<float, unsigned int>> depth_idx_pairs;
-    depth_idx_pairs.reserve(curr_frm.num_keypts_);
-    for (unsigned int idx = 0; idx < curr_frm.num_keypts_; ++idx) {
-        const auto depth = curr_frm.depths_.at(idx);
+    depth_idx_pairs.reserve(curr_frm.undist_keypts_.size());
+    for (const auto &keypoint : curr_frm.undist_keypts_) {
+        const auto depth = keypoint.second.get_depth();
         // depthが有効な範囲のものを追加する
         if (0 < depth) {
-            depth_idx_pairs.emplace_back(std::make_pair(depth, idx));
+            depth_idx_pairs.emplace_back(std::make_pair(depth, keypoint.second.get_id()));
         }
     }
 
@@ -128,6 +128,7 @@ data::keyframe* keyframe_inserter::insert_new_keyframe(data::frame& curr_frm) {
 
         // idxに対応する3次元点がある場合はstereo triangulationしない
         {
+            // TODO pali: Still relies on indices, tbd!
             auto lm = curr_frm.landmarks_.at(idx);
             if (lm) {
                 assert(lm->has_observation());
@@ -137,7 +138,7 @@ data::keyframe* keyframe_inserter::insert_new_keyframe(data::frame& curr_frm) {
 
         // idxに対応する3次元がなければstereo triangulationで作る
         const Vec3_t pos_w = curr_frm.triangulate_stereo(idx);
-        auto lm = new data::landmark(pos_w, keyfrm, map_db_);
+        auto lm = new data::landmark(pos_w, keyfrm, idx, map_db_);
 
         lm->add_observation(keyfrm, idx);
         keyfrm->add_landmark(lm, idx);

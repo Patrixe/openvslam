@@ -252,8 +252,9 @@ void map_database::register_keyframe(camera_database* cam_db, bow_vocabulary* bo
     const auto scale_factor = json_keyfrm.at("scale_factor").get<float>();
 
     // Construct a new object
+    // TODO pali: Half of all information is currently missing here
     auto keyfrm = new data::keyframe(id, src_frm_id, timestamp, cam_pose_cw, camera, depth_thr,
-                                     num_keypts, keypts, undist_keypts, stereo_x_right, depths,
+                                     keypts, undist_keypts,
                                      num_scale_levels, scale_factor, bow_vocab, bow_db, this);
 
     // Append to map database
@@ -269,13 +270,14 @@ void map_database::register_keyframe(camera_database* cam_db, bow_vocabulary* bo
 
 void map_database::register_landmark(const unsigned int id, const nlohmann::json& json_landmark) {
     const auto first_keyfrm_id = json_landmark.at("1st_keyfrm").get<int>();
+    const auto keypoint_id = json_landmark.at("keypoint_id").get<int>();
     const auto pos_w = Vec3_t(json_landmark.at("pos_w").get<std::vector<Vec3_t::value_type>>().data());
     const auto ref_keyfrm_id = json_landmark.at("ref_keyfrm").get<int>();
     const auto ref_keyfrm = keyframes_.at(ref_keyfrm_id);
     const auto num_visible = json_landmark.at("n_vis").get<unsigned int>();
     const auto num_found = json_landmark.at("n_fnd").get<unsigned int>();
 
-    auto lm = new data::landmark(id, first_keyfrm_id, pos_w, ref_keyfrm,
+    auto lm = new data::landmark(id, first_keyfrm_id, keypoint_id, pos_w, ref_keyfrm,
                                  num_visible, num_found, this);
     assert(!landmarks_.count(id));
     landmarks_[lm->id_] = lm;

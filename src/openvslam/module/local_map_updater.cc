@@ -7,7 +7,7 @@ namespace openvslam {
 namespace module {
 // Computes landmarks and keyframes around the given one, which can be interpreted as a "local map"
 local_map_updater::local_map_updater(const data::frame& curr_frm, const unsigned int max_num_local_keyfrms)
-    : frm_id_(curr_frm.id_), frm_lms_(curr_frm.landmarks_), num_keypts_(curr_frm.num_keypts_),
+    : frm_id_(curr_frm.id_), frm_lms_(curr_frm.landmarks_), num_keypts_(curr_frm.undist_keypts_.size()),
       max_num_local_keyfrms_(max_num_local_keyfrms) {}
 
 std::vector<data::keyframe*> local_map_updater::get_local_keyframes() const {
@@ -44,12 +44,8 @@ local_map_updater::keyframe_weights_t local_map_updater::count_keyframe_weights(
     // count the number of sharing landmarks between the current frame and each of the neighbor keyframes
     // key: keyframe, value: number of sharing landmarks
     keyframe_weights_t keyfrm_weights;
-    for (unsigned int idx = 0; idx < num_keypts_; ++idx) {
-        auto lm = frm_lms_.at(idx);
-        if (!lm) {
-            continue;
-        }
-        const auto observations = lm->get_observations();
+    for (const auto &lm : frm_lms_) {
+        const auto observations = lm.second->get_observations();
         for (auto obs : observations) {
             ++keyfrm_weights[obs.first];
         }
@@ -146,20 +142,17 @@ bool local_map_updater::find_local_landmarks() {
         const auto lms = keyfrm->get_landmarks();
 
         for (auto lm : lms) {
-            if (!lm) {
-                continue;
-            }
-            if (lm->will_be_erased()) {
+            if (lm.second->will_be_erased()) {
                 continue;
             }
 
             // avoid duplication
-            if (lm->identifier_in_local_map_update_ == frm_id_) {
+            if (lm.second->identifier_in_local_map_update_ == frm_id_) {
                 continue;
             }
-            lm->identifier_in_local_map_update_ = frm_id_;
+            lm.second->identifier_in_local_map_update_ = frm_id_;
 
-            local_lms_.push_back(lm);
+            local_lms_.push_back(lm.second);
         }
     }
 

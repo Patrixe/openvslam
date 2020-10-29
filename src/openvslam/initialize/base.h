@@ -70,7 +70,7 @@ protected:
     // point ids of the ref_undist_keypts, because we do not rely on indices outside of this class
     std::vector<int> ref_undist_keypt_ids;
     //! bearing vectors of reference frame
-    eigen_alloc_vector<Vec3_t> ref_bearings_;
+    eigen_alloc_map<int, Vec3_t> ref_bearings_;
 
     //-----------------------------------------
     // current frame information
@@ -80,7 +80,7 @@ protected:
     //! undistorted keypoints of current frame
     std::vector<cv::KeyPoint> cur_undist_keypts_;
     //! bearing vectors of current frame
-    eigen_alloc_vector<Vec3_t> cur_bearings_;
+    eigen_alloc_map<int, Vec3_t> cur_bearings_;
 
     //-----------------------------------------
     // matching information

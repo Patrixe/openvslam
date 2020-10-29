@@ -37,20 +37,16 @@ namespace openvslam {
             // set the current camera model
             cur_camera_ = cur_frm.camera_;
             // store the keypoints and bearings
-//    cur_undist_keypts_ = cur_frm.undist_keypts_.get_slam_applicable_cv_keypoints();
-//    cur_bearings_ = cur_frm.undist_keypts_.get_slam_applicable_bearings();
             cur_undist_keypts_.clear();
             cur_undist_keypts_.reserve(ref_matches_with_cur.size());
 
             cur_bearings_.clear();
-            cur_bearings_.reserve(ref_matches_with_cur.size());
 
             ref_undist_keypts_.clear();
             ref_undist_keypts_.reserve(ref_matches_with_cur.size());
             ref_undist_keypt_ids.clear();
             ref_undist_keypt_ids.reserve(ref_matches_with_cur.size());
             ref_bearings_.clear();
-            ref_bearings_.reserve(ref_matches_with_cur.size());
 
             // align matching information
             ref_cur_matches_.clear();
@@ -61,10 +57,10 @@ namespace openvslam {
                 // add points to the lists of point an bearing. We dont need all points of a frame, as only matches are taken into account
                 ref_undist_keypts_.emplace_back(match.second.first.get_cv_keypoint());
                 ref_undist_keypt_ids.emplace_back(match.first);
-                ref_bearings_.emplace_back(match.second.first.get_bearing());
+                ref_bearings_.insert(std::pair<int, Vec3_t >(running_index, match.second.first.get_bearing()));
                 // same for current frame
                 cur_undist_keypts_.emplace_back(match.second.second.get_cv_keypoint());
-                cur_bearings_.emplace_back(match.second.second.get_bearing());
+                cur_bearings_.insert(std::pair<int, Vec3_t >(running_index, match.second.second.get_bearing()));
                 // lastly register as match. Since we technically inserted the points ordered, it looks strange.
                 ref_cur_matches_.emplace_back(std::make_pair(running_index, running_index));
 

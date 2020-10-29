@@ -142,6 +142,9 @@ namespace openvslam {
              */
             Mat33_t get_rotation_inv() const;
 
+
+            int get_keypoint_id_from_bow_id(int bow_id);
+
             /**
              * Update ORB information
              */
@@ -202,9 +205,6 @@ namespace openvslam {
             //! depth threshold
             float depth_thr_;
 
-            //! number of keypoints
-            unsigned int num_keypts_ = 0;
-
             // keypoints
             //! keypoints of monocular or stereo left image
             keypoint_container keypts_;
@@ -212,11 +212,6 @@ namespace openvslam {
             keypoint_container keypts_right_;
             //! undistorted keypoints of monocular or stereo left image
             keypoint_container undist_keypts_;
-
-            //! disparities
-            std::vector<float> stereo_x_right_;
-            //! depths
-            std::vector<float> depths_;
 
             //! BoW features (DBoW2 or FBoW)
 #ifdef USE_DBOW2
@@ -227,17 +222,20 @@ namespace openvslam {
             fbow::BoWFeatVector bow_feat_vec_;
 #endif
 
+            /**
+             * The bow_feat_vec contains a presentation of continuous ids, even though the keypoint ids are not. This
+             * vector represents a translation from the continuous ids to the actual keypoint ids.
+             */
+            std::vector<int> bow_vector_translation;
+
             // ORB descriptors
             //! ORB descriptors of monocular or stereo left image
 //            cv::Mat descriptors_;
             //! ORB descriptors of stereo right image
 //            cv::Mat descriptors_right_;
 
-            //! landmarks, whose nullptr indicates no-association
-            std::vector<landmark *> landmarks_;
-
-            //! outlier flags, which are mainly used in pose optimization and bundle adjustment
-            std::vector<bool> outlier_flags_;
+            //! landmarks, key indicates keypoint id
+            std::map<int, landmark *> landmarks_;
 
             //! cells for storing keypoint indices
             std::vector<std::vector<std::vector<unsigned int>>> keypt_indices_in_cells_;

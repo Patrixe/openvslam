@@ -4,11 +4,14 @@
 namespace openvslam {
 namespace util {
 
-std::vector<cv::Mat> converter::to_desc_vec(const data::keypoint_container points) {
+std::vector<cv::Mat> converter::to_desc_vec(const data::keypoint_container points, std::vector<int> &bow_vector_indices_translation) {
+    bow_vector_indices_translation.reserve(points.size());
+
     std::vector<cv::Mat> desc_vec;
     desc_vec.reserve(points.size());
-    for (auto point : points) {
-        desc_vec.push_back(point.get_orb_descriptor_as_cv_mat());
+    for (const auto &point : points) {
+        desc_vec.push_back(point.second.get_orb_descriptor_as_cv_mat());
+        bow_vector_indices_translation.push_back(point.first);
     }
     return desc_vec;
 }

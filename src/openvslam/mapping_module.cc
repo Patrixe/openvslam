@@ -171,28 +171,24 @@ void mapping_module::store_new_keyframe() {
 
     // update graph
     const auto cur_lms = cur_keyfrm_->get_landmarks();
-    for (unsigned int idx = 0; idx < cur_lms.size(); ++idx) {
-        auto lm = cur_lms.at(idx);
-        if (!lm) {
-            continue;
-        }
-        if (lm->will_be_erased()) {
+    for (const auto lm : cur_lms) {
+        if (lm.second->will_be_erased()) {
             continue;
         }
 
         // if `lm` does not have the observation information from `cur_keyfrm_`,
         // add the association between the keyframe and the landmark
-        if (lm->is_observed_in_keyframe(cur_keyfrm_)) {
+        if (lm.second->is_observed_in_keyframe(cur_keyfrm_)) {
             // if `lm` is correctly observed, make it be checked by the local map cleaner
-            local_map_cleaner_->add_fresh_landmark(lm);
+            local_map_cleaner_->add_fresh_landmark(lm.second);
             continue;
         }
 
         // update connection
-        lm->add_observation(cur_keyfrm_, idx);
+        lm.second->add_observation(cur_keyfrm_, lm.first);
         // update geometry
-        lm->update_normal_and_depth();
-        lm->compute_descriptor();
+        lm.second->update_normal_and_depth();
+        lm.second->compute_descriptor();
     }
     cur_keyfrm_->graph_node_->update_connections();
 
@@ -278,7 +274,8 @@ void mapping_module::triangulate_with_two_keyframes(data::keyframe* keyfrm_1, da
         // succeeded
 
         // create a landmark object
-        auto lm = new data::landmark(pos_w, keyfrm_1, map_db_);
+        // TODO pali: correct id?
+        auto lm = new data::landmark(pos_w, keyfrm_1, idx_1, map_db_);
 
         lm->add_observation(keyfrm_1, idx_1);
         lm->add_observation(keyfrm_2, idx_2);
@@ -310,14 +307,11 @@ void mapping_module::update_new_keyframe() {
     // update the geometries
     const auto cur_landmarks = cur_keyfrm_->get_landmarks();
     for (const auto lm : cur_landmarks) {
-        if (!lm) {
+        if (lm.second->will_be_erased()) {
             continue;
         }
-        if (lm->will_be_erased()) {
-            continue;
-        }
-        lm->compute_descriptor();
-        lm->update_normal_and_depth();
+        lm.second->compute_descriptor();
+        lm.second->update_normal_and_depth();
     }
 
     // update the graph
@@ -381,23 +375,20 @@ void mapping_module::fuse_landmark_duplication(const std::unordered_set<data::ke
         // - duplication of matches
         // then, add matches and solve duplication
         std::unordered_set<data::landmark*> candidate_landmarks_to_fuse;
-        candidate_landmarks_to_fuse.reserve(fuse_tgt_keyfrms.size() * cur_keyfrm_->num_keypts_);
+        candidate_landmarks_to_fuse.reserve(fuse_tgt_keyfrms.size() * cur_keyfrm_->undist_keypts_.size());
 
         for (const auto fuse_tgt_keyfrm : fuse_tgt_keyfrms) {
             const auto fuse_tgt_landmarks = fuse_tgt_keyfrm->get_landmarks();
 
-            for (const auto lm : fuse_tgt_landmarks) {
-                if (!lm) {
-                    continue;
-                }
-                if (lm->will_be_erased()) {
+            for (const auto &lm : fuse_tgt_landmarks) {
+                if (lm.second->will_be_erased()) {
                     continue;
                 }
 
-                if (static_cast<bool>(candidate_landmarks_to_fuse.count(lm))) {
+                if (static_cast<bool>(candidate_landmarks_to_fuse.count(lm.second))) {
                     continue;
                 }
-                candidate_landmarks_to_fuse.insert(lm);
+                candidate_landmarks_to_fuse.insert(lm.second);
             }
         }
 

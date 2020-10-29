@@ -30,13 +30,13 @@ public:
 
 private:
     //! Extract valid (non-deleted) landmarks from landmark vector
-    std::vector<unsigned int> extract_valid_indices(const std::vector<data::landmark*>& landmarks) const;
+    std::vector<unsigned int> extract_valid_indices(const std::map<int, data::landmark*>& landmarks) const;
 
     //! Setup PnP solver with the specified 2D-3D matches
     std::unique_ptr<solve::pnp_solver> setup_pnp_solver(const std::vector<unsigned int>& valid_indices,
-                                                        const eigen_alloc_vector<Vec3_t>& bearings,
-                                                        const std::vector<cv::KeyPoint>& keypts,
-                                                        const std::vector<data::landmark*>& matched_landmarks,
+                                                        const eigen_alloc_map<int, Vec3_t> &bearings,
+                                                        const std::map<int, data::keypoint>& keypts,
+                                                        const std::map<int, data::landmark*>& matched_landmarks,
                                                         const std::vector<float>& scale_factors) const;
 
     //! BoW database

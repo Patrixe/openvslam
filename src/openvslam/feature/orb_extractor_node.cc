@@ -29,21 +29,16 @@ std::array<orb_extractor_node, 4> orb_extractor_node::divide_node() {
     child_nodes.at(3).pt_begin_ = pt_center;
     child_nodes.at(3).pt_end_ = pt_end_;
 
-    // Memory reservation for child nodes
-    for (auto& node : child_nodes) {
-        node.keypts_.reserve(keypts_.size());
-    }
-
     // Distribute keypoints to child nodes
     for (const auto& keypt : keypts_) {
         unsigned int idx = 0;
-        if (pt_begin_.x + half_x <= keypt.get_cv_keypoint().pt.x) {
+        if (pt_begin_.x + half_x <= keypt.second.get_cv_keypoint().pt.x) {
             idx += 1;
         }
-        if (pt_begin_.y + half_y <= keypt.get_cv_keypoint().pt.y) {
+        if (pt_begin_.y + half_y <= keypt.second.get_cv_keypoint().pt.y) {
             idx += 2;
         }
-        child_nodes.at(idx).keypts_.push_back(keypt);
+        child_nodes.at(idx).keypts_.insert(keypt);
     }
 
     return child_nodes;

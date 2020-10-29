@@ -52,20 +52,17 @@ void local_bundle_adjuster::optimize(openvslam::data::keyframe* curr_keyfrm, boo
 
     for (auto local_keyfrm : local_keyfrms) {
         const auto landmarks = local_keyfrm.second->get_landmarks();
-        for (auto local_lm : landmarks) {
-            if (!local_lm) {
-                continue;
-            }
-            if (local_lm->will_be_erased()) {
+        for (auto &local_lm : landmarks) {
+            if (local_lm.second->will_be_erased()) {
                 continue;
             }
 
             // 重複を避ける
-            if (local_lms.count(local_lm->id_)) {
+            if (local_lms.count(local_lm.second->get_id())) {
                 continue;
             }
 
-            local_lms[local_lm->id_] = local_lm;
+            local_lms[local_lm.second->get_id()] = local_lm.second;
         }
     }
 
@@ -173,7 +170,7 @@ void local_bundle_adjuster::optimize(openvslam::data::keyframe* curr_keyfrm, boo
 
             const auto keyfrm_vtx = keyfrm_vtx_container.get_vertex(keyfrm);
             const auto& undist_keypt = keyfrm->undist_keypts_.at(idx);
-            const float x_right = keyfrm->stereo_x_right_.at(idx);
+            const float x_right = undist_keypt.get_stereo_x_offset();
             const float inv_sigma_sq = keyfrm->inv_level_sigma_sq_.at(undist_keypt.get_cv_keypoint().octave);
             const auto sqrt_chi_sq = (keyfrm->camera_->setup_type_ == camera::setup_type_t::Monocular)
                                          ? sqrt_chi_sq_2D

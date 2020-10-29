@@ -36,18 +36,20 @@ nlohmann::json convert_keypoints_to_json(const keypoint_container& keypts) {
 
 keypoint_container convert_json_to_keypoints(const nlohmann::json& json_keypts) {
     keypoint_container keypts;
-    keypts.reserve(json_keypts.size());
 
     for (unsigned int idx = 0; idx < json_keypts.size(); ++idx) {
-        const auto& json_keypt = json_keypts.at(idx);
-        keypts.push_back(keypoint(cv::KeyPoint(json_keypt.at("pt").at(0).get<float>(),
-                                      json_keypt.at("pt").at(1).get<float>(),
-                                      0,
-                                      json_keypt.at("ang").get<float>(),
-                                      0,
-                                      json_keypt.at("oct").get<unsigned int>(),
-                                      -1)
-                                  ));
+        const auto &json_keypt = json_keypts.at(idx);
+        keypts.insert(std::pair<int, data::keypoint>(
+                json_keypt.at("id_").get<unsigned int>(),
+                 (keypoint(cv::KeyPoint(json_keypt.at("pt").at(0).get<float>(),
+                                        json_keypt.at("pt").at(1).get<float>(),
+                                        0,
+                                        json_keypt.at("ang").get<float>(),
+                                        0,
+                                        json_keypt.at("oct").get<unsigned int>(),
+                                        -1))
+                 ))
+        );
     }
     return keypts;
 }
@@ -63,12 +65,12 @@ nlohmann::json convert_undistorted_to_json(const keypoint_container& undist_keyp
 
 //TODO pali: Extend with segmentation information
 keypoint_container convert_json_to_undistorted(const nlohmann::json& json_undist_keypts) {
-    auto undist_keypts = keypoint_container(json_undist_keypts.size());
+    keypoint_container undist_keypts;
     assert(undist_keypts.size() == json_undist_keypts.size());
     for (unsigned int idx = 0; idx < json_undist_keypts.size(); ++idx) {
         const auto& json_undist_keypt = json_undist_keypts.at(idx);
-        undist_keypts.at(idx).get_cv_keypoint().pt.x = json_undist_keypt.at(0).get<float>();
-        undist_keypts.at(idx).get_cv_keypoint().pt.y = json_undist_keypt.at(1).get<float>();
+        undist_keypts[idx].get_cv_keypoint().pt.x = json_undist_keypt.at(0).get<float>();
+        undist_keypts[idx].get_cv_keypoint().pt.y = json_undist_keypt.at(1).get<float>();
     }
     return undist_keypts;
 }
@@ -100,7 +102,7 @@ cv::Mat convert_json_to_descriptors(const nlohmann::json& json_descriptors) {
     return descriptors;
 }
 
-void assign_keypoints_to_grid(camera::base* camera, const std::vector<cv::KeyPoint>& undist_keypts,
+void assign_keypoints_to_grid(camera::base* camera, const data::keypoint_container& undist_keypts,
                               std::vector<std::vector<std::vector<unsigned int>>>& keypt_indices_in_cells) {
     // Pre-allocate memory
     const unsigned int num_keypts = undist_keypts.size();
@@ -114,16 +116,15 @@ void assign_keypoints_to_grid(camera::base* camera, const std::vector<cv::KeyPoi
     }
 
     // Calculate cell position and store
-    for (unsigned int idx = 0; idx < num_keypts; ++idx) {
-        const auto& keypt = undist_keypts.at(idx);
+    for (const auto &keypt : undist_keypts) {
         int cell_idx_x, cell_idx_y;
-        if (get_cell_indices(camera, keypt, cell_idx_x, cell_idx_y)) {
-            keypt_indices_in_cells.at(cell_idx_x).at(cell_idx_y).push_back(idx);
+        if (get_cell_indices(camera, keypt.second.get_cv_keypoint(), cell_idx_x, cell_idx_y)) {
+            keypt_indices_in_cells.at(cell_idx_x).at(cell_idx_y).push_back(keypt.first);
         }
     }
 }
 
-auto assign_keypoints_to_grid(camera::base* camera, const std::vector<cv::KeyPoint>& undist_keypts)
+auto assign_keypoints_to_grid(camera::base* camera, const data::keypoint_container& undist_keypts)
     -> std::vector<std::vector<std::vector<unsigned int>>> {
     std::vector<std::vector<std::vector<unsigned int>>> keypt_indices_in_cells;
     assign_keypoints_to_grid(camera, undist_keypts, keypt_indices_in_cells);

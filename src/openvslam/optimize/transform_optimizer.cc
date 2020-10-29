@@ -18,7 +18,7 @@ transform_optimizer::transform_optimizer(const bool fix_scale, const unsigned in
     : fix_scale_(fix_scale), num_iter_(num_iter) {}
 
 unsigned int transform_optimizer::optimize(data::keyframe* keyfrm_1, data::keyframe* keyfrm_2,
-                                           std::vector<data::landmark*>& matched_lms_in_keyfrm_2,
+                                           std::map<int, data::landmark*>& matched_lms_in_keyfrm_2,
                                            ::g2o::Sim3& g2o_Sim3_12, const float chi_sq) const {
     const float sqrt_chi_sq = std::sqrt(chi_sq);
 
@@ -63,7 +63,7 @@ unsigned int transform_optimizer::optimize(data::keyframe* keyfrm_1, data::keyfr
 
     for (unsigned int idx1 = 0; idx1 < num_matches; ++idx1) {
         // matching情報があるもののみを対象とする
-        if (!matched_lms_in_keyfrm_2.at(idx1)) {
+        if (matched_lms_in_keyfrm_2.find(idx1) == matched_lms_in_keyfrm_2.end()) {
             continue;
         }
 
@@ -112,7 +112,7 @@ unsigned int transform_optimizer::optimize(data::keyframe* keyfrm_1, data::keyfr
 
         // outlierにする処理
         const auto idx1 = mutual_edges.at(i).idx1_;
-        matched_lms_in_keyfrm_2.at(idx1) = nullptr;
+        matched_lms_in_keyfrm_2.erase(idx1);
 
         mutual_edges.at(i).set_as_outlier();
         ++num_outliers;
@@ -143,7 +143,7 @@ unsigned int transform_optimizer::optimize(data::keyframe* keyfrm_1, data::keyfr
         if (chi_sq < edge_12->chi2() || chi_sq < edge_21->chi2()) {
             // outlierにする処理
             unsigned int idx1 = mutual_edges.at(i).idx1_;
-            matched_lms_in_keyfrm_2.at(idx1) = nullptr;
+            matched_lms_in_keyfrm_2.erase(idx1);
             continue;
         }
 

@@ -54,7 +54,6 @@ namespace openvslam {
                 const unsigned int num_rows = std::ceil(height / cell_size) + 1;
 
                 data::keypoint_container keypts_to_distribute;
-                keypts_to_distribute.reserve(orb_params_.max_num_keypts_ * 10);
 
 #ifdef USE_OPENMP
 #pragma omp parallel for
@@ -119,22 +118,21 @@ namespace openvslam {
 #endif
                         {
                             for (auto &keypt : seg_keypts_in_cell) {
-                                keypt.get_cv_keypoint().pt.x += j * cell_size;
-                                keypt.get_cv_keypoint().pt.y += i * cell_size;
+                                keypt.second.get_cv_keypoint().pt.x += j * cell_size;
+                                keypt.second.get_cv_keypoint().pt.y += i * cell_size;
                                 // Check if the keypoint is in the mask
                                 if (!mask.empty() &&
-                                    is_in_mask(min_border_y + keypt.get_cv_keypoint().pt.y,
-                                               min_border_x + keypt.get_cv_keypoint().pt.x, scale_factor)) {
+                                    is_in_mask(min_border_y + keypt.second.get_cv_keypoint().pt.y,
+                                               min_border_x + keypt.second.get_cv_keypoint().pt.x, scale_factor)) {
                                     continue;
                                 }
-                                keypts_to_distribute.push_back(keypt);
+                                keypts_to_distribute.insert(keypt);
                             }
                         }
                     }
                 }
 
                 data::keypoint_container &keypts_at_level = all_keypts.at(level);
-                keypts_at_level.reserve(orb_params_.max_num_keypts_);
 
                 // Distribute keypoints via tree
                 keypts_at_level = distribute_keypoints_via_tree(keypts_to_distribute,
@@ -146,11 +144,11 @@ namespace openvslam {
 
                 for (auto &keypt : keypts_at_level) {
                     // Translation correction (scale will be corrected after ORB description)
-                    keypt.get_cv_keypoint().pt.x += min_border_x;
-                    keypt.get_cv_keypoint().pt.y += min_border_y;
+                    keypt.second.get_cv_keypoint().pt.x += min_border_x;
+                    keypt.second.get_cv_keypoint().pt.y += min_border_y;
                     // Set the other information
-                    keypt.get_cv_keypoint().octave = level;
-                    keypt.get_cv_keypoint().size = scaled_patch_size;
+                    keypt.second.get_cv_keypoint().octave = level;
+                    keypt.second.get_cv_keypoint().size = scaled_patch_size;
                 }
             }
 
@@ -202,7 +200,6 @@ namespace openvslam {
             }
 
             keypts.clear();
-            keypts.reserve(num_keypts);
 
             unsigned int offset = 0;
             for (unsigned int level = 0; level < orb_params_.num_levels_; ++level) {
@@ -222,15 +219,15 @@ namespace openvslam {
 
                 correct_keypoint_scale(keypts_at_level, level);
 
-                keypts.insert(keypts.end(), keypts_at_level.begin(), keypts_at_level.end());
+                keypts.insert(keypts_at_level.begin(), keypts_at_level.end());
             }
         }
 
         void segmented_orb_extractor::transform_to_keypoint_structure(std::vector<cv::KeyPoint> &keypts_in_cell,
                                                                       data::keypoint_container &seg_keypts_in_cell) {
-//            seg_keypts_in_cell.reserve(keypts_in_cell.size());
             for (auto &point : keypts_in_cell) {
-                seg_keypts_in_cell.push_back(data::keypoint(point));
+                const data::keypoint &keypoint = data::keypoint(point);
+                seg_keypts_in_cell.insert(std::pair<int, data::keypoint>(keypoint.get_id(), keypoint));
             }
         }
 
@@ -319,9 +316,9 @@ namespace openvslam {
                                                                         float scale_factor, int offset_x, int offset_y) {
             for (auto &keypoint : keypts_in_cell) {
                 if (!this->seg_cfg->allowed_for_landmark(
-                        segmentation_information.at<uchar>((keypoint.get_cv_keypoint().pt.y + offset_y) * scale_factor,
-                                                           (keypoint.get_cv_keypoint().pt.x + offset_x) * scale_factor))) {
-                    keypoint.set_applicable_for_slam(false);
+                        segmentation_information.at<uchar>((keypoint.second.get_cv_keypoint().pt.y + offset_y) * scale_factor,
+                                                           (keypoint.second.get_cv_keypoint().pt.x + offset_x) * scale_factor))) {
+                    keypoint.second.set_applicable_for_slam(false);
                 }
             }
         }

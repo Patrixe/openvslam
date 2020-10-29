@@ -112,19 +112,14 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
                                      : -trans_lc(2) > curr_frm.camera_->true_baseline_;
 
     // last frameの特徴点と対応が取れている3次元点を，current frameに再投影して対応を求める
-    for (unsigned int idx_last = 0; idx_last < last_frm.num_keypts_; ++idx_last) {
-        auto* lm = last_frm.landmarks_.at(idx_last);
-        // 3次元点と対応が取れていない
-        if (!lm) {
-            continue;
-        }
+    for (auto &lm : last_frm.landmarks_) {
         // pose optimizationでoutlierになったものとは対応を取らない
-        if (last_frm.outlier_flags_.at(idx_last)) {
+        if (lm.second->is_outlier()) {
             continue;
         }
 
         // グローバル基準の3次元点座標
-        const Vec3_t pos_w = lm->get_pos_in_world();
+        const Vec3_t pos_w = lm.second->get_pos_in_world();
 
         // 再投影して可視性を求める
         Vec2_t reproj;
@@ -137,7 +132,7 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
         }
 
         // 隣接フレーム間では対応する特徴点のスケールは一定であると仮定し，探索範囲を設定
-        const auto last_scale_level = last_frm.keypts_.at(idx_last).get_cv_keypoint().octave;
+        const auto last_scale_level = lm.second->get_initial_keypoint().get_cv_keypoint().octave;
 
         // 3次元点を再投影した点が存在するcellの特徴点を取得
         std::vector<std::reference_wrapper<const data::keypoint>> keypoints_in_cell;
@@ -160,7 +155,7 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
             continue;
         }
 
-        const auto lm_desc = lm->get_descriptor();
+        const auto lm_desc = lm.second->get_descriptor();
 
         unsigned int best_hamm_dist = MAX_HAMMING_DIST;
         std::reference_wrapper<const data::keypoint> best_matching_keypoint = keypoints_in_cell[0];
@@ -194,12 +189,12 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
         }
 
         // 有効なmatchingとする
-        curr_frm.landmarks_.at(best_matching_keypoint.get().get_id()) = lm;
+        curr_frm.landmarks_[best_matching_keypoint.get().get_id()] = lm.second;
         ++num_matches;
 
         if (check_orientation_) {
             const auto delta_angle
-                = last_frm.undist_keypts_.at(idx_last).get_cv_keypoint().angle - best_matching_keypoint.get().get_cv_keypoint().angle;
+                = lm.second->get_initial_keypoint().get_cv_keypoint().angle - best_matching_keypoint.get().get_cv_keypoint().angle;
             angle_checker.append_delta_angle(delta_angle, best_matching_keypoint.get().get_id());
         }
     }
@@ -322,8 +317,8 @@ unsigned int projection::match_frame_and_keyframe(data::frame& curr_frm, data::k
     return num_matches;
 }
 
-unsigned int projection::match_by_Sim3_transform(data::keyframe* keyfrm, const Mat44_t& Sim3_cw, const std::vector<data::landmark*>& landmarks,
-                                                 std::vector<data::landmark*>& matched_lms_in_keyfrm, const float margin) const {
+unsigned int projection::match_by_Sim3_transform(data::keyframe* keyfrm, const Mat44_t& Sim3_cw, const std::map<int, data::landmark*>& landmarks,
+                                                 std::map<int, data::landmark*>& matched_lms_in_keyfrm, const float margin) const {
     unsigned int num_matches = 0;
 
     // Sim3を分解してSE3にする
@@ -333,19 +328,18 @@ unsigned int projection::match_by_Sim3_transform(data::keyframe* keyfrm, const M
     const Vec3_t trans_cw = Sim3_cw.block<3, 1>(0, 3) / s_cw;
     const Vec3_t cam_center = -rot_cw.transpose() * trans_cw;
 
-    std::set<data::landmark*> already_matched(matched_lms_in_keyfrm.begin(), matched_lms_in_keyfrm.end());
-    already_matched.erase(static_cast<data::landmark*>(nullptr));
+    std::map<int, data::landmark*> already_matched(matched_lms_in_keyfrm.begin(), matched_lms_in_keyfrm.end());
 
-    for (auto lm : landmarks) {
-        if (lm->will_be_erased()) {
+    for (auto &lm : landmarks) {
+        if (lm.second->will_be_erased()) {
             continue;
         }
-        if (already_matched.count(lm)) {
+        if (already_matched.find(lm.first) != already_matched.end()) {
             continue;
         }
 
         // グローバル基準の3次元点座標
-        const Vec3_t pos_w = lm->get_pos_in_world();
+        const Vec3_t pos_w = lm.second->get_pos_in_world();
 
         // 再投影して可視性を求める
         Vec2_t reproj;
@@ -360,22 +354,22 @@ unsigned int projection::match_by_Sim3_transform(data::keyframe* keyfrm, const M
         // ORBスケールの範囲内であることを確認
         const Vec3_t cam_to_lm_vec = pos_w - cam_center;
         const auto cam_to_lm_dist = cam_to_lm_vec.norm();
-        const auto max_cam_to_lm_dist = lm->get_max_valid_distance();
-        const auto min_cam_to_lm_dist = lm->get_min_valid_distance();
+        const auto max_cam_to_lm_dist = lm.second->get_max_valid_distance();
+        const auto min_cam_to_lm_dist = lm.second->get_min_valid_distance();
 
         if (cam_to_lm_dist < min_cam_to_lm_dist || max_cam_to_lm_dist < cam_to_lm_dist) {
             continue;
         }
 
         // 3次元点の平均観測ベクトルとの角度を計算し，閾値(60deg)より大きければ破棄
-        const Vec3_t obs_mean_normal = lm->get_obs_mean_normal();
+        const Vec3_t obs_mean_normal = lm.second->get_obs_mean_normal();
 
         if (cam_to_lm_vec.dot(obs_mean_normal) < 0.5 * cam_to_lm_dist) {
             continue;
         }
 
         // 3次元点を再投影した点が存在するcellの特徴点を取得
-        const auto pred_scale_level = lm->predict_scale_level(cam_to_lm_dist, keyfrm);
+        const auto pred_scale_level = lm.second->predict_scale_level(cam_to_lm_dist, keyfrm);
 
         const auto keypoints_in_cell = keyfrm->get_keypoints_in_cell(reproj(0), reproj(1), margin * keyfrm->scale_factors_.at(pred_scale_level));
 
@@ -384,7 +378,7 @@ unsigned int projection::match_by_Sim3_transform(data::keyframe* keyfrm, const M
         }
 
         // descriptorが最も近い特徴点を探す
-        const auto lm_desc = lm->get_descriptor();
+        const auto lm_desc = lm.second->get_descriptor();
 
         unsigned int best_dist = MAX_HAMMING_DIST;
         std::reference_wrapper<const data::keypoint> best_matching_keypoint = keypoints_in_cell[0];
@@ -416,14 +410,14 @@ unsigned int projection::match_by_Sim3_transform(data::keyframe* keyfrm, const M
             continue;
         }
 
-        matched_lms_in_keyfrm.at(best_matching_keypoint.get().get_id()) = lm;
+        matched_lms_in_keyfrm[best_matching_keypoint.get().get_id()] = lm.second;
         ++num_matches;
     }
 
     return num_matches;
 }
 
-unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data::keyframe* keyfrm_2, std::vector<data::landmark*>& matched_lms_in_keyfrm_1,
+unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data::keyframe* keyfrm_2, std::map<int, data::landmark*>& matched_lms_in_keyfrm_1,
                                                   const float& s_12, const Mat33_t& rot_12, const Vec3_t& trans_12, const float margin) const {
     // keyframe1の姿勢
     const Mat33_t rot_1w = keyfrm_1->get_rotation();
@@ -446,10 +440,10 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
     std::vector<bool> is_already_matched_in_keyfrm_2(landmarks_2.size(), false);
 
     for (unsigned int idx_1 = 0; idx_1 < landmarks_1.size(); ++idx_1) {
-        auto* lm = matched_lms_in_keyfrm_1.at(idx_1);
-        if (!lm) {
+        if (matched_lms_in_keyfrm_1.find(idx_1) == matched_lms_in_keyfrm_1.end()) {
             continue;
         }
+        auto* lm = matched_lms_in_keyfrm_1.at(idx_1);
         const auto idx_2 = lm->get_index_in_keyframe(keyfrm_2);
         if (0 <= idx_2 && idx_2 < static_cast<int>(landmarks_2.size())) {
             is_already_matched_in_keyfrm_1.at(idx_1) = true;
@@ -639,7 +633,7 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
 
         const auto idx_1 = matched_indices_1_in_keyfrm_2.at(idx_2);
         if (idx_1 == static_cast<int>(i)) {
-            matched_lms_in_keyfrm_1.at(idx_1) = landmarks_2.at(idx_2);
+            matched_lms_in_keyfrm_1[idx_1] = landmarks_2.at(idx_2);
             ++num_matches;
         }
     }

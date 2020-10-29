@@ -5,7 +5,7 @@
 namespace openvslam {
 namespace solve {
 
-essential_solver::essential_solver(const eigen_alloc_vector<Vec3_t>& bearings_1, const eigen_alloc_vector<Vec3_t>& bearings_2,
+essential_solver::essential_solver(const eigen_alloc_map<int, Vec3_t> &bearings_1, const eigen_alloc_map<int, Vec3_t> &bearings_2,
                                    const std::vector<std::pair<int, int>>& matches_12)
     : bearings_1_(bearings_1), bearings_2_(bearings_2), matches_12_(matches_12) {}
 

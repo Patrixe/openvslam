@@ -35,9 +35,9 @@ unsigned int robust::match_for_triangulation(data::keyframe* keyfrm_1, data::key
 
     // matching情報を格納する
     // keyframe1の各特徴点に対して対応を求めるため，keyframe2で既にkeyframe1と対応が取れているものを除外するようにする
-    std::vector<bool> is_already_matched_in_keyfrm_2(keyfrm_2->num_keypts_, false);
+    std::map<int, bool> is_already_matched_in_keyfrm_2;
     // keyframe1のidxと対応しているkeyframe2のidxを格納する
-    std::vector<int> matched_indices_2_in_keyfrm_1(keyfrm_1->num_keypts_, -1);
+    std::map<int, int> matched_indices_2_in_keyfrm_1;
 
 #ifdef USE_DBOW2
     DBoW2::FeatureVector::const_iterator itr_1 = keyfrm_1->bow_feat_vec_.begin();
@@ -59,43 +59,51 @@ unsigned int robust::match_for_triangulation(data::keyframe* keyfrm_1, data::key
             const auto& keyfrm_1_indices = itr_1->second;
             const auto& keyfrm_2_indices = itr_2->second;
 
+            // iterate over all keypoints of the keyframe1
             for (const auto idx_1 : keyfrm_1_indices) {
-                auto lm_1 = assoc_lms_in_keyfrm_1.at(idx_1);
+
                 // 3次元点が存在"する"場合はスルー(triangulation前のmatchingであるため)
-                if (lm_1) {
+                // if this keypoint is associated with a landmark, the matching has already been done via triangulation
+                if (assoc_lms_in_keyfrm_1.find(keyfrm_1->get_keypoint_id_from_bow_id(idx_1)) != assoc_lms_in_keyfrm_1.end()) {
                     continue;
                 }
 
+                // use only keypoints which are applicable for slam, i.e. which are not filtered out by segmentation
+                const data::keypoint &keypoint_frame1 = keyfrm_1->undist_keypts_.at(keyfrm_1->get_keypoint_id_from_bow_id(idx_1));
+                if (!keypoint_frame1.is_applicable_for_slam()) {
+                    continue;
+                }
                 // stereo keypointかどうかをチェックする
-                const bool is_stereo_keypt_1 = 0 <= keyfrm_1->stereo_x_right_.at(idx_1);
+                // else compare the bearing with each point of the second keyframe, compute hamming distance to
+                // determine whether two points can be matched.
+                const bool is_stereo_keypt_1 = 0 <= keypoint_frame1.get_stereo_x_offset();
 
                 // 特徴点・特徴量を取得
-                const auto& keypt_1 = keyfrm_1->undist_keypts_.at(idx_1);
-                const Vec3_t& bearing_1 = keypt_1.get_bearing();
-                const auto& desc_1 = keyfrm_1->undist_keypts_.at(idx_1).get_orb_descriptor_as_cv_mat();
+                const Vec3_t& bearing_1 = keypoint_frame1.get_bearing();
+                const auto& desc_1 = keypoint_frame1.get_orb_descriptor_as_cv_mat();
 
                 // keyframe2の特徴点で一番ハミング距離が近いものを探す
                 unsigned int best_hamm_dist = HAMMING_DIST_THR_LOW;
-                int best_idx_2 = -1;
+                int best_bow_idx_2 = -1;
 
-                for (const auto idx_2 : keyfrm_2_indices) {
-                    auto lm_2 = assoc_lms_in_keyfrm_2.at(idx_2);
+                for (const auto bow_idx_2 : keyfrm_2_indices) {
                     // 3次元点が存在"する"場合はスルー(triangulation前のmatchingであるため)
-                    if (lm_2) {
+                    if (assoc_lms_in_keyfrm_2.find(keyfrm_2->get_keypoint_id_from_bow_id(bow_idx_2)) != assoc_lms_in_keyfrm_2.end()) {
                         continue;
                     }
 
                     // すでに対応が得られている場合はスルーする
-                    if (is_already_matched_in_keyfrm_2.at(idx_2)) {
+                    if (is_already_matched_in_keyfrm_2[keyfrm_2->get_keypoint_id_from_bow_id(bow_idx_2)]) {
                         continue;
                     }
 
                     // stereo keypointかどうかをチェックする
-                    const bool is_stereo_keypt_2 = 0 <= keyfrm_2->stereo_x_right_.at(idx_2);
+                    const data::keypoint &keypoint_frame2 = keyfrm_2->undist_keypts_.at(keyfrm_2->get_keypoint_id_from_bow_id(bow_idx_2));
+                    const bool is_stereo_keypt_2 = 0 <= keypoint_frame2.get_stereo_x_offset();
 
                     // 特徴点・特徴量を取得
-                    const Vec3_t& bearing_2 = keyfrm_2->undist_keypts_.at(idx_2).get_bearing();
-                    const auto& desc_2 = keyfrm_2->undist_keypts_.at(idx_2).get_orb_descriptor_as_cv_mat();
+                    const Vec3_t& bearing_2 = keypoint_frame2.get_bearing();
+                    const auto& desc_2 = keypoint_frame2.get_orb_descriptor_as_cv_mat();
 
                     // 距離計算
                     const auto hamm_dist = compute_descriptor_distance_32(desc_1, desc_2);
@@ -118,31 +126,33 @@ unsigned int robust::match_for_triangulation(data::keyframe* keyfrm_1, data::key
 
                     // E行列による整合性チェック
                     const bool is_inlier = check_epipolar_constraint(bearing_1, bearing_2, E_12,
-                                                                     keyfrm_1->scale_factors_.at(keypt_1.get_cv_keypoint().octave));
+                                                                     keyfrm_1->scale_factors_.at(keypoint_frame1.get_cv_keypoint().octave));
                     if (is_inlier) {
-                        best_idx_2 = idx_2;
+                        best_bow_idx_2 = bow_idx_2;
                         best_hamm_dist = hamm_dist;
                     }
                 }
 
-                if (best_idx_2 < 0) {
+                if (best_bow_idx_2 < 0) {
                     continue;
                 }
 
-                is_already_matched_in_keyfrm_2.at(best_idx_2) = true;
-                matched_indices_2_in_keyfrm_1.at(idx_1) = best_idx_2;
+                is_already_matched_in_keyfrm_2[keyfrm_2->get_keypoint_id_from_bow_id(best_bow_idx_2)] = true;
+                matched_indices_2_in_keyfrm_1[keyfrm_1->get_keypoint_id_from_bow_id(idx_1)] = keyfrm_2->get_keypoint_id_from_bow_id(best_bow_idx_2);
                 ++num_matches;
 
                 if (check_orientation_) {
                     const auto delta_angle
-                        = keypt_1.get_cv_keypoint().angle - keyfrm_2->undist_keypts_.at(best_idx_2).get_cv_keypoint().angle;
-                    angle_checker.append_delta_angle(delta_angle, idx_1);
+                            = keypoint_frame1.get_cv_keypoint().angle
+                                - keyfrm_2->undist_keypts_.at(keyfrm_2->get_keypoint_id_from_bow_id(best_bow_idx_2)).get_cv_keypoint().angle;
+                    angle_checker.append_delta_angle(delta_angle, keyfrm_1->get_keypoint_id_from_bow_id(idx_1));
                 }
             }
 
             ++itr_1;
             ++itr_2;
         }
+        // if the two nodes from bow-vector are not the same, catch the higher one and loop again
         else if (itr_1->first < itr_2->first) {
             itr_1 = keyfrm_1->bow_feat_vec_.lower_bound(itr_2->first);
         }
@@ -154,7 +164,7 @@ unsigned int robust::match_for_triangulation(data::keyframe* keyfrm_1, data::key
     if (check_orientation_) {
         const auto invalid_matches = angle_checker.get_invalid_matches();
         for (const auto invalid_idx : invalid_matches) {
-            matched_indices_2_in_keyfrm_1.at(invalid_idx) = -1;
+            matched_indices_2_in_keyfrm_1.erase(invalid_idx);
             --num_matches;
         }
     }
@@ -162,30 +172,28 @@ unsigned int robust::match_for_triangulation(data::keyframe* keyfrm_1, data::key
     matched_idx_pairs.clear();
     matched_idx_pairs.reserve(num_matches);
 
-    for (unsigned int idx_1 = 0; idx_1 < matched_indices_2_in_keyfrm_1.size(); ++idx_1) {
-        if (matched_indices_2_in_keyfrm_1.at(idx_1) < 0) {
-            continue;
-        }
-        matched_idx_pairs.emplace_back(std::make_pair(idx_1, matched_indices_2_in_keyfrm_1.at(idx_1)));
+//    for (unsigned int idx_1 = 0; idx_1 < matched_indices_2_in_keyfrm_1.size(); ++idx_1) {
+    for (auto &match : matched_indices_2_in_keyfrm_1) {
+        matched_idx_pairs.emplace_back(match);
     }
 
     return num_matches;
 }
 
 unsigned int robust::match_frame_and_keyframe(data::frame& frm, data::keyframe* keyfrm,
-                                              std::vector<data::landmark*>& matched_lms_in_frm) {
+                                              std::map<int, data::landmark*>& matched_lms_in_frm) {
     // 初期化
-    const auto num_frm_keypts = frm.num_keypts_;
     const auto keyfrm_lms = keyfrm->get_landmarks();
     unsigned int num_inlier_matches = 0;
-    matched_lms_in_frm = std::vector<data::landmark*>(num_frm_keypts, nullptr);
 
     // brute-force matchを計算
     std::vector<std::pair<int, int>> matches;
     brute_force_match(frm, keyfrm, matches);
 
     // eight-point RANSACでインライアのみを抽出
-    solve::essential_solver solver(frm.undist_keypts_.get_slam_applicable_bearings(), keyfrm->undist_keypts_.get_slam_applicable_bearings(), matches);
+    const eigen_alloc_map<int, Vec3_t> &frame_bearings = frm.undist_keypts_.get_all_bearings();
+    const eigen_alloc_map<int, Vec3_t> &keyframe_bearings = keyfrm->undist_keypts_.get_all_bearings();
+    solve::essential_solver solver(frame_bearings, keyframe_bearings, matches);
     solver.find_via_ransac(50, false);
     if (!solver.solution_is_valid()) {
         return 0;
@@ -200,7 +208,7 @@ unsigned int robust::match_frame_and_keyframe(data::frame& frm, data::keyframe* 
         const auto frm_idx = matches.at(i).first;
         const auto keyfrm_idx = matches.at(i).second;
 
-        matched_lms_in_frm.at(frm_idx) = keyfrm_lms.at(keyfrm_idx);
+        matched_lms_in_frm[frm_idx] = keyfrm_lms.at(keyfrm_idx);
         ++num_inlier_matches;
     }
 
@@ -214,54 +222,46 @@ unsigned int robust::brute_force_match(data::frame& frm, data::keyframe* keyfrm,
 
     // 1. フレームとキーフレームの情報を取得
 
-    const auto num_keypts_1 = frm.num_keypts_;
-    const auto num_keypts_2 = keyfrm->num_keypts_;
-    const auto keypts_1 = frm.keypts_;
-    const auto keypts_2 = keyfrm->keypts_;
-    const auto lms_2 = keyfrm->get_landmarks();
-//    const auto& descs_1 = frm.descriptors_;
-//    const auto& descs_2 = keyfrm->descriptors_;
+    const auto frame_keypts = frm.keypts_;
+    const auto keyframe_keypts = keyfrm->keypts_;
+    const auto keyframe_landmarks = keyfrm->get_landmarks();
 
     // 2. キーフレームの各descriptorに対して，1番目と2番目に近いフレームのdescriptorを求める
     //    キーフレームのdescriptorは，3次元点と結びついているもののみ対象にする
 
     // 各idx_1に対して対応しているidx_2
-    auto matched_indices_2_in_1 = std::vector<int>(num_keypts_1, -1);
+    std::map<int, int> matched_indices_2_in_1;
     // 重複を避ける
     std::unordered_set<int> already_matched_indices_1;
 
-    for (unsigned int idx_2 = 0; idx_2 < num_keypts_2; ++idx_2) {
-        // 3次元点が有効なもののみ対象にする
-        auto lm_2 = lms_2.at(idx_2);
-        if (!lm_2) {
-            continue;
-        }
-        if (lm_2->will_be_erased()) {
+    // TODO pali: needs filtering of non slam points
+    for (const auto keyframe_landmark : keyframe_landmarks) {
+        if (keyframe_landmark.second->will_be_erased()) {
             continue;
         }
 
         // キーフレームのdescriptorを取得
-        const auto& desc_2 = keyfrm->undist_keypts_.at(idx_2).get_orb_descriptor_as_cv_mat();
+        const auto& keyframe_landmark_descriptor = keyframe_landmark.second->get_initial_keypoint().get_orb_descriptor_as_cv_mat();
 
         // 1番目と2番目に近いフレームのdescriptorを求める
         unsigned int best_hamm_dist = MAX_HAMMING_DIST;
-        int best_idx_1 = -1;
+        int best_matching_frame_keypoint_id = -1;
         unsigned int second_best_hamm_dist = MAX_HAMMING_DIST;
 
-        for (unsigned int idx_1 = 0; idx_1 < num_keypts_1; ++idx_1) {
+        for (const auto &frame_keypoint : frm.undist_keypts_) {
             // 重複を避ける
-            if (static_cast<bool>(already_matched_indices_1.count(idx_1))) {
+            if (static_cast<bool>(already_matched_indices_1.count(frame_keypoint.first))) {
                 continue;
             }
 
-            const auto& desc_1 = frm.undist_keypts_.at(idx_1).get_orb_descriptor_as_cv_mat();
+            const auto& frame_keypoint_descriptor = frame_keypoint.second.get_orb_descriptor_as_cv_mat();
 
-            const auto hamm_dist = compute_descriptor_distance_32(desc_2, desc_1);
+            const auto hamm_dist = compute_descriptor_distance_32(keyframe_landmark_descriptor, frame_keypoint_descriptor);
 
             if (hamm_dist < best_hamm_dist) {
                 second_best_hamm_dist = best_hamm_dist;
                 best_hamm_dist = hamm_dist;
-                best_idx_1 = idx_1;
+                best_matching_frame_keypoint_id = frame_keypoint.first;
             }
             else if (hamm_dist < second_best_hamm_dist) {
                 second_best_hamm_dist = hamm_dist;
@@ -272,7 +272,7 @@ unsigned int robust::brute_force_match(data::frame& frm, data::keyframe* keyfrm,
             continue;
         }
 
-        if (best_idx_1 < 0) {
+        if (best_matching_frame_keypoint_id < 0) {
             continue;
         }
 
@@ -281,14 +281,14 @@ unsigned int robust::brute_force_match(data::frame& frm, data::keyframe* keyfrm,
             continue;
         }
 
-        matched_indices_2_in_1.at(best_idx_1) = idx_2;
+        matched_indices_2_in_1[best_matching_frame_keypoint_id] = keyframe_landmark.first;
         // 重複を避ける
-        already_matched_indices_1.insert(best_idx_1);
+        already_matched_indices_1.insert(best_matching_frame_keypoint_id);
 
         if (check_orientation_) {
             const auto delta_angle
-                = keypts_1.at(best_idx_1).get_cv_keypoint().angle - keypts_2.at(idx_2).get_cv_keypoint().angle;
-            angle_checker.append_delta_angle(delta_angle, best_idx_1);
+                = frame_keypts.at(best_matching_frame_keypoint_id).get_cv_keypoint().angle - keyframe_keypts.at(keyframe_landmark.first).get_cv_keypoint().angle;
+            angle_checker.append_delta_angle(delta_angle, best_matching_frame_keypoint_id);
         }
 
         ++num_matches;
@@ -297,19 +297,15 @@ unsigned int robust::brute_force_match(data::frame& frm, data::keyframe* keyfrm,
     if (check_orientation_) {
         const auto invalid_matches = angle_checker.get_invalid_matches();
         for (const auto invalid_idx_1 : invalid_matches) {
-            matched_indices_2_in_1.at(invalid_idx_1) = -1;
+            matched_indices_2_in_1.erase(invalid_idx_1);
             --num_matches;
         }
     }
 
     matches.clear();
     matches.reserve(num_matches);
-    for (unsigned int idx_1 = 0; idx_1 < matched_indices_2_in_1.size(); ++idx_1) {
-        const auto idx_2 = matched_indices_2_in_1.at(idx_1);
-        if (idx_2 < 0) {
-            continue;
-        }
-        matches.emplace_back(std::make_pair(idx_1, idx_2));
+    for (const auto &match : matched_indices_2_in_1) {
+        matches.emplace_back(match);
     }
 
     return num_matches;

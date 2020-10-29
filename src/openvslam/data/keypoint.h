@@ -65,8 +65,8 @@ namespace openvslam {
             static int id_counter;
         };
 
-        class keypoint_container : public std::vector<keypoint> {
-            using std::vector<keypoint>::vector;
+        class keypoint_container : public std::map<int, keypoint> {
+            using std::map<int, keypoint>::map;
         public:
             /**
              * This is intended for read only access. Adding a new keypoint will not change the keypoint_container
@@ -83,15 +83,15 @@ namespace openvslam {
 
             std::vector<cv::KeyPoint> get_slam_forbidden_cv_keypoints() const;
 
-            std::vector<keypoint> get_slam_applicable_keypoints() const;
+            std::map<int, keypoint> get_slam_applicable_keypoints() const;
 
-            std::vector<keypoint> get_slam_forbidden_keypoints() const;
+            std::map<int, keypoint> get_slam_forbidden_keypoints() const;
 
-            eigen_alloc_vector<Vec3_t> get_slam_applicable_bearings() const;
+            eigen_alloc_map<int, Vec3_t> get_slam_applicable_bearings() const;
 
-            eigen_alloc_vector<Vec3_t> get_slam_forbidden_bearings() const;
+            eigen_alloc_map<int, Vec3_t> get_slam_forbidden_bearings() const;
 
-            eigen_alloc_vector <Vec3_t> get_all_bearings() const;
+            eigen_alloc_map<int, Vec3_t> get_all_bearings() const;
         };
     }
 }

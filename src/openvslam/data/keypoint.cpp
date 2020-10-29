@@ -85,7 +85,7 @@ namespace openvslam {
             std::vector<cv::KeyPoint> keypoints;
             keypoints.reserve(this->size());
             for (auto& keypoint : *this) {
-                keypoints.emplace_back(keypoint.get_cv_keypoint());
+                keypoints.emplace_back(keypoint.second.get_cv_keypoint());
             }
 
             return keypoints;
@@ -95,8 +95,8 @@ namespace openvslam {
             std::vector<cv::KeyPoint> keypoints;
             keypoints.reserve(this->size());
             for (auto& keypoint : *this) {
-                if (keypoint.is_applicable_for_slam()) {
-                    keypoints.emplace_back(keypoint.get_cv_keypoint());
+                if (keypoint.second.is_applicable_for_slam()) {
+                    keypoints.emplace_back(keypoint.second.get_cv_keypoint());
                 }
             }
 
@@ -107,66 +107,61 @@ namespace openvslam {
             std::vector<cv::KeyPoint> keypoints;
             keypoints.reserve(this->size());
             for (auto& keypoint : *this) {
-                if (!keypoint.is_applicable_for_slam()) {
-                    keypoints.emplace_back(keypoint.get_cv_keypoint());
+                if (!keypoint.second.is_applicable_for_slam()) {
+                    keypoints.emplace_back(keypoint.second.get_cv_keypoint());
                 }
             }
 
             return keypoints;
         }
 
-        std::vector<keypoint> keypoint_container::get_slam_applicable_keypoints() const {
-            std::vector<keypoint> keypoints;
-            keypoints.reserve(this->size());
+        std::map<int, keypoint> keypoint_container::get_slam_applicable_keypoints() const {
+            std::map<int, keypoint> keypoints;
             for (auto& keypoint : *this) {
-                if (keypoint.is_applicable_for_slam()) {
-                    keypoints.emplace_back(keypoint);
+                if (keypoint.second.is_applicable_for_slam()) {
+                    keypoints.insert(keypoint);
                 }
             }
 
             return keypoints;
         }
-        std::vector<keypoint> keypoint_container::get_slam_forbidden_keypoints() const {
-            std::vector<keypoint> keypoints;
-            keypoints.reserve(this->size());
+        std::map<int, keypoint> keypoint_container::get_slam_forbidden_keypoints() const {
+            std::map<int, keypoint> keypoints;
             for (auto& keypoint : *this) {
-                if (!keypoint.is_applicable_for_slam()) {
-                    keypoints.emplace_back(keypoint);
+                if (!keypoint.second.is_applicable_for_slam()) {
+                    keypoints.insert(keypoint);
                 }
             }
 
             return keypoints;
         }
 
-        eigen_alloc_vector<Vec3_t> keypoint_container::get_slam_applicable_bearings() const {
-            eigen_alloc_vector<Vec3_t> bearings;
-            bearings.reserve(this->size());
+        eigen_alloc_map<int, Vec3_t> keypoint_container::get_slam_applicable_bearings() const {
+            eigen_alloc_map<int, Vec3_t> bearings;
             for (auto& keypoint : *this) {
-                if (keypoint.is_applicable_for_slam()) {
-                    bearings.emplace_back(keypoint.get_bearing());
+                if (keypoint.second.is_applicable_for_slam()) {
+                    bearings.insert(std::pair<int, Vec3_t >(keypoint.first, keypoint.second.get_bearing()));
                 }
             }
 
             return bearings;
         }
 
-        eigen_alloc_vector<Vec3_t> keypoint_container::get_slam_forbidden_bearings() const {
-            eigen_alloc_vector<Vec3_t> bearings;
-            bearings.reserve(this->size());
+        eigen_alloc_map<int, Vec3_t> keypoint_container::get_slam_forbidden_bearings() const {
+            eigen_alloc_map<int, Vec3_t> bearings;
             for (auto& keypoint : *this) {
-                if (!keypoint.is_applicable_for_slam()) {
-                    bearings.emplace_back(keypoint.get_bearing());
+                if (!keypoint.second.is_applicable_for_slam()) {
+                    bearings.insert(std::pair<int, Vec3_t >(keypoint.first, keypoint.second.get_bearing()));
                 }
             }
 
             return bearings;
         }
 
-        eigen_alloc_vector<Vec3_t> keypoint_container::get_all_bearings() const {
-            eigen_alloc_vector<Vec3_t> bearings;
-            bearings.reserve(this->size());
+        eigen_alloc_map<int, Vec3_t> keypoint_container::get_all_bearings() const {
+            eigen_alloc_map<int, Vec3_t> bearings;
             for (auto& keypoint : *this) {
-                bearings.emplace_back(keypoint.get_bearing());
+                bearings.insert(std::pair<int, Vec3_t >(keypoint.first, keypoint.second.get_bearing()));
             }
 
             return bearings;

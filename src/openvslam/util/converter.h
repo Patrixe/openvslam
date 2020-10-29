@@ -17,7 +17,7 @@ namespace util {
 class converter {
 public:
     //! descriptor vector
-    static std::vector<cv::Mat> to_desc_vec(data::keypoint_container desc);
+    static std::vector<cv::Mat> to_desc_vec(data::keypoint_container desc, std::vector<int> &bow_vector_indices_translation);
 
     //! to SE3 of g2o
     static g2o::SE3Quat to_g2o_SE3(const Mat44_t& cam_pose);

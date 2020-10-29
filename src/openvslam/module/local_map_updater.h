@@ -54,7 +54,7 @@ private:
     // frame ID
     const unsigned int frm_id_;
     // landmark associations
-    const std::vector<data::landmark*> frm_lms_;
+    const std::map<int, data::landmark*> frm_lms_;
     // the number of keypoints
     const unsigned int num_keypts_;
     // maximum number of the local keyframes

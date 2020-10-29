@@ -60,14 +60,11 @@ void graph_node::update_connections() {
 
     std::map<keyframe*, unsigned int> keyfrm_weights;
     for (const auto lm : landmarks) {
-        if (!lm) {
-            continue;
-        }
-        if (lm->will_be_erased()) {
+        if (lm.second->will_be_erased()) {
             continue;
         }
 
-        const auto observations = lm->get_observations();
+        const auto observations = lm.second->get_observations();
 
         for (const auto& obs : observations) {
             auto keyfrm = obs.first;

@@ -105,7 +105,7 @@ protected:
                             std::vector<std::pair<int, orb_extractor_node*>>& leaf_nodes) const;
 
     //! Find keypoint which has maximum value of response
-    data::keypoint_container find_keypoints_with_max_response(std::list<orb_extractor_node>& nodes) const;
+    static data::keypoint_container find_keypoints_with_max_response(std::list<orb_extractor_node>& nodes) ;
 
     //! Compute orientation for each keypoint
     void compute_orientation(const cv::Mat& image, data::keypoint_container &keypts) const;

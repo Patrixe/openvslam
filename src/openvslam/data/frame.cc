@@ -34,7 +34,6 @@ frame::frame(const cv::Mat& img_gray, const double timestamp,
 
     // Extract ORB feature
     extract_orb(img_gray, mask);
-    num_keypts_ = keypts_.size();
     if (keypts_.empty()) {
         spdlog::warn("frame {}: cannot extract any keypoints", id_);
     }
@@ -42,19 +41,11 @@ frame::frame(const cv::Mat& img_gray, const double timestamp,
     // Undistort keypoints
     camera_->undistort_keypoints(keypts_, undist_keypts_);
 
-    // Ignore stereo parameters
-    stereo_x_right_ = std::vector<float>(num_keypts_, -1);
-    depths_ = std::vector<float>(num_keypts_, -1);
-
     // Convert to bearing vector
     camera->convert_keypoints_to_bearings(undist_keypts_);
 
-    // Initialize association with 3D points
-    landmarks_ = std::vector<landmark*>(num_keypts_, nullptr);
-    outlier_flags_ = std::vector<bool>(num_keypts_, false);
-
     // Assign all the keypoints into grid
-    assign_keypoints_to_grid(camera_, undist_keypts_.get_all_cv_keypoints(), keypt_indices_in_cells_);
+    assign_keypoints_to_grid(camera_, undist_keypts_, keypt_indices_in_cells_);
 }
 
 frame::frame(const cv::Mat& left_img_gray, const cv::Mat& right_img_gray, const double timestamp,
@@ -71,7 +62,6 @@ frame::frame(const cv::Mat& left_img_gray, const cv::Mat& right_img_gray, const 
     std::thread thread_right(&frame::extract_orb, this, right_img_gray, mask, image_side::Right);
     thread_left.join();
     thread_right.join();
-    num_keypts_ = keypts_.size();
     if (keypts_.empty()) {
         spdlog::warn("frame {}: cannot extract any keypoints", id_);
     }
@@ -84,17 +74,13 @@ frame::frame(const cv::Mat& left_img_gray, const cv::Mat& right_img_gray, const 
                                  keypts_, keypts_right_,
                                  scale_factors_, inv_scale_factors_,
                                  camera->focal_x_baseline_, camera_->true_baseline_);
-    stereo_matcher.compute(stereo_x_right_, depths_);
+    stereo_matcher.compute();
 
     // Convert to bearing vector
     camera->convert_keypoints_to_bearings(undist_keypts_);
 
-    // Initialize association with 3D points
-    landmarks_ = std::vector<landmark*>(num_keypts_, nullptr);
-    outlier_flags_ = std::vector<bool>(num_keypts_, false);
-
     // Assign all the keypoints into grid
-    assign_keypoints_to_grid(camera_, undist_keypts_.get_all_cv_keypoints(), keypt_indices_in_cells_);
+    assign_keypoints_to_grid(camera_, undist_keypts_, keypt_indices_in_cells_);
 }
 
 frame::frame(const cv::Mat& img_gray, const cv::Mat& img_depth, const double timestamp,
@@ -108,7 +94,6 @@ frame::frame(const cv::Mat& img_gray, const cv::Mat& img_depth, const double tim
 
     // Extract ORB feature
     extract_orb(img_gray, mask);
-    num_keypts_ = keypts_.size();
     if (keypts_.empty()) {
         spdlog::warn("frame {}: cannot extract any keypoints", id_);
     }
@@ -122,12 +107,8 @@ frame::frame(const cv::Mat& img_gray, const cv::Mat& img_depth, const double tim
     // Convert to bearing vector
     camera->convert_keypoints_to_bearings(undist_keypts_);
 
-    // Initialize association with 3D points
-    landmarks_ = std::vector<landmark*>(num_keypts_, nullptr);
-    outlier_flags_ = std::vector<bool>(num_keypts_, false);
-
     // Assign all the keypoints into grid
-    assign_keypoints_to_grid(camera_, undist_keypts_.get_all_cv_keypoints(), keypt_indices_in_cells_);
+    assign_keypoints_to_grid(camera_, undist_keypts_, keypt_indices_in_cells_);
 }
 
 void frame::set_cam_pose(const Mat44_t& cam_pose_cw) {
@@ -155,6 +136,10 @@ Mat33_t frame::get_rotation_inv() const {
     return rot_wc_;
 }
 
+int frame::get_keypoint_id_from_bow_id(int bow_id) {
+    return bow_vector_translation.at(bow_id);
+}
+
 void frame::update_orb_info() {
     num_scale_levels_ = extractor_->get_num_scale_levels();
     scale_factor_ = extractor_->get_scale_factor();
@@ -168,7 +153,7 @@ void frame::update_orb_info() {
 void frame::compute_bow() {
     if (bow_vec_.empty()) {
 #ifdef USE_DBOW2
-        bow_vocab_->transform(util::converter::to_desc_vec(undist_keypts_), bow_vec_, bow_feat_vec_, 4);
+        bow_vocab_->transform(util::converter::to_desc_vec(undist_keypts_, bow_vector_translation), bow_vec_, bow_feat_vec_, 4);
 #else
         bow_vocab_->transform(descriptors_, 4, bow_vec_, bow_feat_vec_);
 #endif
@@ -212,7 +197,7 @@ Vec3_t frame::triangulate_stereo(const unsigned int idx) {
         case camera::model_type_t::Perspective: {
             auto camera = static_cast<camera::perspective*>(camera_);
 
-            const float depth = depths_.at(idx);
+            const float depth = undist_keypts_.at(idx).get_depth();
             if (0.0 < depth) {
                 const float x = undist_keypts_.at(idx).get_cv_keypoint().pt.x;
                 const float y = undist_keypts_.at(idx).get_cv_keypoint().pt.y;
@@ -230,7 +215,7 @@ Vec3_t frame::triangulate_stereo(const unsigned int idx) {
         case camera::model_type_t::Fisheye: {
             auto camera = static_cast<camera::fisheye*>(camera_);
 
-            const float depth = depths_.at(idx);
+            const float depth = undist_keypts_.at(idx).get_depth();
             if (0.0 < depth) {
                 const float x = undist_keypts_.at(idx).get_cv_keypoint().pt.x;
                 const float y = undist_keypts_.at(idx).get_cv_keypoint().pt.y;
@@ -272,13 +257,9 @@ void frame::extract_orb(const cv::Mat& img, const cv::Mat& mask, const image_sid
 void frame::compute_stereo_from_depth(const cv::Mat& right_img_depth) {
     assert(camera_->setup_type_ == camera::setup_type_t::RGBD);
 
-    // Initialize with invalid value
-    stereo_x_right_ = std::vector<float>(num_keypts_, -1);
-    depths_ = std::vector<float>(num_keypts_, -1);
-
-    for (unsigned int idx = 0; idx < num_keypts_; idx++) {
-        auto& keypt = keypts_.at(idx);
-        auto& undist_keypt = undist_keypts_.at(idx);
+    for (auto &idx : undist_keypts_) {
+        auto& keypt = keypts_.at(idx.first);
+        auto& undist_keypt = idx.second;
 
         const float x = keypt.get_cv_keypoint().pt.x;
         const float y = keypt.get_cv_keypoint().pt.y;
@@ -289,11 +270,8 @@ void frame::compute_stereo_from_depth(const cv::Mat& right_img_depth) {
             continue;
         }
 
-        // TODO pali: Use only the keypoint version.
-        depths_.at(idx) = depth;
         undist_keypt.set_depth(depth);
-        stereo_x_right_.at(idx) = undist_keypt.get_cv_keypoint().pt.x - camera_->focal_x_baseline_ / depth;
-        undist_keypt.set_stereo_x_offset(stereo_x_right_.at(idx));
+        undist_keypt.set_stereo_x_offset(undist_keypt.get_cv_keypoint().pt.x - camera_->focal_x_baseline_ / depth);
     }
 }
 } // namespace data

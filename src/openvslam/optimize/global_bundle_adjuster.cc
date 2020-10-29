@@ -27,7 +27,7 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
 
     const auto keyfrms = map_db_->get_all_keyframes();
     const auto lms = map_db_->get_all_landmarks();
-    std::vector<bool> is_optimized_lm(lms.size(), true);
+    std::map<int, bool> is_optimized_lm;
 
     // 2. optimizerを構築
 
@@ -78,11 +78,7 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
     constexpr float chi_sq_3D = 7.81473;
     const float sqrt_chi_sq_3D = std::sqrt(chi_sq_3D);
 
-    for (unsigned int i = 0; i < lms.size(); ++i) {
-        auto lm = lms.at(i);
-        if (!lm) {
-            continue;
-        }
+    for (auto &lm : lms) {
         if (lm->will_be_erased()) {
             continue;
         }
@@ -108,7 +104,7 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
 
             const auto keyfrm_vtx = keyfrm_vtx_container.get_vertex(keyfrm);
             const auto& undist_keypt = keyfrm->undist_keypts_.at(idx);
-            const float x_right = keyfrm->stereo_x_right_.at(idx);
+            const float x_right = undist_keypt.get_stereo_x_offset();
             const float inv_sigma_sq = keyfrm->inv_level_sigma_sq_.at(undist_keypt.get_cv_keypoint().octave);
             const auto sqrt_chi_sq = (keyfrm->camera_->setup_type_ == camera::setup_type_t::Monocular)
                                          ? sqrt_chi_sq_2D
@@ -123,7 +119,7 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
 
         if (num_edges == 0) {
             optimizer.removeVertex(lm_vtx);
-            is_optimized_lm.at(i) = false;
+            is_optimized_lm[lm->get_id()] = false;
         }
     }
 
@@ -153,15 +149,11 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
         }
     }
 
-    for (unsigned int i = 0; i < lms.size(); ++i) {
-        if (!is_optimized_lm.at(i)) {
+    for (auto &lm : lms) {
+        if (is_optimized_lm.find(lm->get_id()) == is_optimized_lm.end()) {
             continue;
         }
 
-        auto lm = lms.at(i);
-        if (!lm) {
-            continue;
-        }
         if (lm->will_be_erased()) {
             continue;
         }

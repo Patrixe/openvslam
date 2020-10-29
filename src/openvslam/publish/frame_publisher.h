@@ -3,6 +3,7 @@
 
 #include "openvslam/config.h"
 #include "openvslam/tracking_module.h"
+#include "openvslam/data/landmark.h"
 
 #include <mutex>
 #include <vector>
@@ -50,7 +51,7 @@ protected:
                                      float mag = 1.0) const;
 
     unsigned int draw_tracked_points(cv::Mat& img, const data::keypoint_container &curr_keypts,
-                                     const std::vector<bool>& is_tracked, const bool mapping_is_enabled,
+                                     const std::map<int, bool>& is_tracked, const bool mapping_is_enabled,
                                      const float mag = 1.0) const;
 
     void draw_info_text(cv::Mat& img, tracker_state_t tracking_state, unsigned int num_tracked,
@@ -77,7 +78,7 @@ protected:
     tracker_state_t tracking_state_;
 
     //! initial keypoints
-    std::vector<data::keypoint> init_keypts_;
+    std::map<int, data::keypoint> init_keypts_;
     //! matching between initial frame and current frame
     std::map<int, std::pair<data::keypoint, data::keypoint>> init_matches_;
 
@@ -91,7 +92,7 @@ protected:
     bool mapping_is_enabled_;
 
     //! tracking flag for each current keypoint
-    std::vector<bool> is_tracked_;
+    std::map<int, bool> is_tracked_;
 };
 
 } // namespace publish

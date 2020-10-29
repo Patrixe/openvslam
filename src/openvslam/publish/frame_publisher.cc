@@ -1,4 +1,3 @@
-#include "openvslam/data/landmark.h"
 #include "openvslam/data/keypoint.h"
 #include "openvslam/data/map_database.h"
 #include "openvslam/publish/frame_publisher.h"
@@ -23,12 +22,12 @@ frame_publisher::~frame_publisher() {
 cv::Mat frame_publisher::draw_frame(const bool draw_text) {
     cv::Mat img;
     tracker_state_t tracking_state;
-    std::vector<data::keypoint> init_keypts;
+    std::map<int, data::keypoint> init_keypts;
     std::map<int, std::pair<data::keypoint, data::keypoint>> init_matches;
     data::keypoint_container curr_keypts;
     double elapsed_ms;
     bool mapping_is_enabled;
-    std::vector<bool> is_tracked;
+    std::map<int, bool> is_tracked;
 
     // copy to avoid memory access conflict
     {
@@ -109,27 +108,29 @@ unsigned int frame_publisher::draw_initial_points(cv::Mat &img,
 }
 
 unsigned int frame_publisher::draw_tracked_points(cv::Mat& img, const data::keypoint_container &curr_keypts,
-                                                  const std::vector<bool>& is_tracked, const bool mapping_is_enabled,
+                                                  const std::map<int, bool>& is_tracked, const bool mapping_is_enabled,
                                                   const float mag) const {
     constexpr float radius = 5;
 
     unsigned int num_tracked = 0;
 
-    for (unsigned int i = 0; i < curr_keypts.size(); ++i) {
-        if (!is_tracked.at(i)) {
-            continue;
-        }
+    // TODO pali: Loop does not work anymore, indices are not necessaryly continuous
+    for (const auto &keypoint : curr_keypts) {
+        // TODO pali: This filtering needs to be adapted
+        //        if (!is_tracked.at(i)) {
+//            continue;
+//        }
 
-        const cv::Point2f pt_begin{curr_keypts.at(i).get_cv_keypoint().pt.x * mag - radius, curr_keypts.at(i).get_cv_keypoint().pt.y * mag - radius};
-        const cv::Point2f pt_end{curr_keypts.at(i).get_cv_keypoint().pt.x * mag + radius, curr_keypts.at(i).get_cv_keypoint().pt.y * mag + radius};
+        const cv::Point2f pt_begin{keypoint.second.get_cv_keypoint().pt.x * mag - radius, keypoint.second.get_cv_keypoint().pt.y * mag - radius};
+        const cv::Point2f pt_end{keypoint.second.get_cv_keypoint().pt.x * mag + radius, keypoint.second.get_cv_keypoint().pt.y * mag + radius};
 
         if (mapping_is_enabled) {
             cv::rectangle(img, pt_begin, pt_end, mapping_color_);
-            cv::circle(img, curr_keypts.at(i).get_cv_keypoint().pt * mag, 2, mapping_color_, -1);
+            cv::circle(img, keypoint.second.get_cv_keypoint().pt * mag, 2, mapping_color_, -1);
         }
         else {
             cv::rectangle(img, pt_begin, pt_end, localization_color_);
-            cv::circle(img, curr_keypts.at(i).get_cv_keypoint().pt * mag, 2, localization_color_, -1);
+            cv::circle(img, keypoint.second.get_cv_keypoint().pt * mag, 2, localization_color_, -1);
         }
 
         ++num_tracked;
@@ -186,13 +187,10 @@ void frame_publisher::update(tracking_module* tracker) {
 
     tracker->img_gray_.copyTo(img_);
 
-    const auto num_curr_keypts = tracker->curr_frm_.num_keypts_;
     curr_keypts_ = tracker->curr_frm_.keypts_;
     elapsed_ms_ = tracker->elapsed_ms_;
     mapping_is_enabled_ = tracker->get_mapping_module_status();
     tracking_state_ = tracker->last_tracking_state_;
-
-    is_tracked_ = std::vector<bool>(num_curr_keypts, false);
 
     switch (tracking_state_) {
         case tracker_state_t::Initializing: {
@@ -201,17 +199,13 @@ void frame_publisher::update(tracking_module* tracker) {
             break;
         }
         case tracker_state_t::Tracking: {
-            for (unsigned int i = 0; i < num_curr_keypts; ++i) {
-                auto lm = tracker->curr_frm_.landmarks_.at(i);
-                if (!lm) {
-                    continue;
-                }
-                if (tracker->curr_frm_.outlier_flags_.at(i)) {
+            for (auto &lm : tracker->curr_frm_.landmarks_) {
+                if (lm.second->is_outlier()) {
                     continue;
                 }
 
-                if (0 < lm->num_observations()) {
-                    is_tracked_.at(i) = true;
+                if (0 < lm.second->num_observations()) {
+                    is_tracked_[lm.second->get_id()] = true;
                 }
             }
             break;

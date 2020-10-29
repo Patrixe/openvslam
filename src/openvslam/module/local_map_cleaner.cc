@@ -116,17 +116,13 @@ void local_map_cleaner::count_redundant_observations(data::keyframe* keyfrm, uns
     num_redundant_obs = 0;
 
     const auto landmarks = keyfrm->get_landmarks();
-    for (unsigned int idx = 0; idx < landmarks.size(); ++idx) {
-        auto lm = landmarks.at(idx);
-        if (!lm) {
-            continue;
-        }
-        if (lm->will_be_erased()) {
+    for (auto lm : landmarks) {
+        if (lm.second->will_be_erased()) {
             continue;
         }
 
         // if depth is within the valid range, it won't be considered
-        const auto depth = keyfrm->depths_.at(idx);
+        const auto depth = keyfrm->undist_keypts_.at(lm.second->get_index_in_keyframe(keyfrm)).get_depth();
         if (!is_monocular_ && (depth < 0.0 || keyfrm->depth_thr_ < depth)) {
             continue;
         }
@@ -134,14 +130,14 @@ void local_map_cleaner::count_redundant_observations(data::keyframe* keyfrm, uns
         ++num_valid_obs;
 
         // if the number of the obs is smaller than the threshold, cannot remote the observers
-        if (lm->num_observations() <= num_better_obs_thr) {
+        if (lm.second->num_observations() <= num_better_obs_thr) {
             continue;
         }
 
         // `keyfrm` observes `lm` with the scale level `scale_level`
-        const auto scale_level = keyfrm->undist_keypts_.at(idx).get_cv_keypoint().octave;
+        const auto scale_level = keyfrm->undist_keypts_.at(lm.second->get_index_in_keyframe(keyfrm)).get_cv_keypoint().octave;
         // get observers of `lm`
-        const auto observations = lm->get_observations();
+        const auto observations = lm.second->get_observations();
 
         bool obs_by_keyfrm_is_redundant = false;
 

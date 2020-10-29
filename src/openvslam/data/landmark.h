@@ -2,6 +2,7 @@
 #define OPENVSLAM_DATA_LANDMARK_H
 
 #include "openvslam/type.h"
+#include "openvslam/data/keypoint.h"
 
 #include <map>
 #include <mutex>
@@ -24,12 +25,11 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     //! constructor
-    landmark(const Vec3_t& pos_w, keyframe* ref_keyfrm, map_database* map_db);
+    landmark(const Vec3_t& pos_w, keyframe* ref_keyfrm, const int keypoint_id, map_database* map_db);
 
     //! constructor for map loading with computing parameters which can be recomputed
-    landmark(const unsigned int id, const unsigned int first_keyfrm_id,
-             const Vec3_t& pos_w, keyframe* ref_keyfrm,
-             const unsigned int num_visible, const unsigned int num_found,
+    landmark(const unsigned int id, const unsigned int first_keyfrm_id, const int keypoint_id,
+             const Vec3_t& pos_w, keyframe* ref_keyfrm, unsigned int num_visible, unsigned int num_found,
              map_database* map_db);
 
     //! set world coordinates of this landmark
@@ -81,9 +81,9 @@ public:
     float get_max_valid_distance() const;
 
     //! predict scale level assuming this landmark is observed in the specified frame
-    unsigned int predict_scale_level(const float cam_to_lm_dist, const frame* frm) const;
+    unsigned int predict_scale_level(float cam_to_lm_dist, const frame* frm) const;
     //! predict scale level assuming this landmark is observed in the specified keyframe
-    unsigned int predict_scale_level(const float cam_to_lm_dist, const keyframe* keyfrm) const;
+    unsigned int predict_scale_level(float cam_to_lm_dist, const keyframe* keyfrm) const;
 
     //! erase this landmark from database
     void prepare_for_erasing();
@@ -102,8 +102,15 @@ public:
     //! encode landmark information as JSON
     nlohmann::json to_json() const;
 
+    bool is_outlier() const;
+    void set_outlier(bool);
+    const keypoint &get_initial_keypoint();
+
+    int get_id();
+
 public:
     unsigned int id_;
+    unsigned int keypoint_id;
     static std::atomic<unsigned int> next_id_;
     unsigned int first_keyfrm_id_ = 0;
     unsigned int num_observations_ = 0;
@@ -123,6 +130,8 @@ public:
     unsigned int loop_BA_identifier_ = 0;
 
 private:
+    bool outlier = false;
+
     //! world coordinates of this landmark
     Vec3_t pos_w_;
 

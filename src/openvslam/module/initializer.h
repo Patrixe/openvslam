@@ -45,7 +45,7 @@ public:
     initializer_state_t get_state() const;
 
     //! Get keypoints of the initial frame
-    std::vector<data::keypoint> get_initial_keypoints() const;
+    std::map<int, data::keypoint> get_initial_keypoints() const;
 
     //! Get initial matches between the initial and current frames
     std::map<int, std::pair<data::keypoint, data::keypoint>> get_initial_slam_matches() const;

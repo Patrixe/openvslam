@@ -23,11 +23,11 @@ struct orb_params {
     //! Dump parameter values to the standard output
     void show_parameters() const;
 
-    unsigned int max_num_keypts_ = 2000;
+    int max_num_keypts_ = 2000;
     float scale_factor_ = 1.2;
-    unsigned int num_levels_ = 8;
-    unsigned int ini_fast_thr_ = 20;
-    unsigned int min_fast_thr = 7;
+    int num_levels_ = 8;
+    int ini_fast_thr_ = 20;
+    int min_fast_thr = 7;
 
     //! A vector of keypoint area represents mask area
     //! Each areas are denoted as form of [x_min / cols, x_max / cols, y_min / rows, y_max / rows]

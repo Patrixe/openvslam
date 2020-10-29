@@ -5,7 +5,7 @@ namespace openvslam {
 namespace match {
 
 stereo::stereo(const std::vector<cv::Mat>& left_image_pyramid, const std::vector<cv::Mat>& right_image_pyramid,
-               const data::keypoint_container &keypts_left, const data::keypoint_container &keypts_right,
+               data::keypoint_container &keypts_left, data::keypoint_container &keypts_right,
                const std::vector<float>& scale_factors, const std::vector<float>& inv_scale_factors,
                const float focal_x_baseline, const float true_baseline)
     : left_image_pyramid_(left_image_pyramid), right_image_pyramid_(right_image_pyramid),
@@ -14,24 +14,22 @@ stereo::stereo(const std::vector<cv::Mat>& left_image_pyramid, const std::vector
       focal_x_baseline_(focal_x_baseline), true_baseline_(true_baseline),
       min_disp_(0.0f), max_disp_(focal_x_baseline_ / true_baseline_) {}
 
-void stereo::compute(std::vector<float>& stereo_x_right, std::vector<float>& depths) const {
+void stereo::compute() const {
     // 画像の行ごとに，ORBで抽出した右画像の特徴点indexを格納しておく
     const auto indices_right_in_row = get_right_keypoint_indices_in_each_row(2.0);
 
     // 左画像の各特徴点についてサブピクセルで視差と深度を求める
-    stereo_x_right.resize(num_keypts_, -1.0f);
-    depths.resize(num_keypts_, -1.0f);
-    std::vector<std::pair<int, int>> correlation_and_idx_left;
+    std::vector<std::pair<int, data::keypoint&>> correlation_and_idx_left;
     correlation_and_idx_left.reserve(num_keypts_);
 
 #ifdef USE_OPENMP
 #pragma omp parallel for
 #endif
-    for (unsigned int idx_left = 0; idx_left < num_keypts_; ++idx_left) {
-        const auto& keypt_left = keypts_left_.at(idx_left);
-        const auto scale_level_left = keypt_left.get_cv_keypoint().octave;
-        const float y_left = keypt_left.get_cv_keypoint().pt.y;
-        const float x_left = keypt_left.get_cv_keypoint().pt.x;
+    for (auto &keypoint_left : keypts_left_) {
+        auto &keypoint = keypoint_left.second;
+        const auto scale_level_left = keypoint.get_cv_keypoint().octave;
+        const float y_left = keypoint.get_cv_keypoint().pt.y;
+        const float x_left = keypoint.get_cv_keypoint().pt.x;
 
         // 左画像の特徴点と同じ高さにある右画像の特徴点のindexを取得 -> マッチング候補
         const auto& candidate_indices_right = indices_right_in_row.at(y_left);
@@ -49,7 +47,7 @@ void stereo::compute(std::vector<float>& stereo_x_right, std::vector<float>& dep
         // 左画像のidx_leftと特徴ベクトルが一番近いbest_idx_rightを探す
         unsigned int best_idx_right = 0;
         unsigned int best_hamm_dist = hamm_dist_thr_;
-        find_closest_keypoints_in_stereo(idx_left, scale_level_left, candidate_indices_right,
+        find_closest_keypoints_in_stereo(keypoint.get_orb_descriptor_as_cv_mat(), scale_level_left, candidate_indices_right,
                                          min_x_right, max_x_right, best_idx_right, best_hamm_dist);
         // ハミング距離が閾値を満たさなければ破棄
         if (hamm_dist_thr_ <= best_hamm_dist) {
@@ -61,7 +59,7 @@ void stereo::compute(std::vector<float>& stereo_x_right, std::vector<float>& dep
         float best_x_right = -1.0f;
         float best_disp = -1.0f;
         float best_correlation = UINT_MAX;
-        const auto is_valid = compute_subpixel_disparity(keypt_left.get_cv_keypoint(), keypt_right.get_cv_keypoint(), best_x_right, best_disp, best_correlation);
+        const auto is_valid = compute_subpixel_disparity(keypoint.get_cv_keypoint(), keypt_right.get_cv_keypoint(), best_x_right, best_disp, best_correlation);
         // 見つからなければ破棄
         if (!is_valid) {
             continue;
@@ -80,19 +78,23 @@ void stereo::compute(std::vector<float>& stereo_x_right, std::vector<float>& dep
 
         // 計算結果をセット
         // depths, stereo_x_right についてはループごとに別のメモリ領域にアクセスするのでcritical指定は必要ない
-        depths.at(idx_left) = focal_x_baseline_ / best_disp;
-        stereo_x_right.at(idx_left) = best_x_right;
+        keypoint.set_depth(focal_x_baseline_ / best_disp);
+        keypoint.set_stereo_x_offset(best_x_right);
         // こっちはcritical指定が必要
 #ifdef USE_OPENMP
 #pragma omp critical
 #endif
         {
-            correlation_and_idx_left.emplace_back(std::make_pair(best_correlation, idx_left));
+            correlation_and_idx_left.emplace_back(std::make_pair(best_correlation, std::reference_wrapper<data::keypoint>(keypoint)));
         }
     }
 
     // 相関の中央値を求める
-    std::sort(correlation_and_idx_left.begin(), correlation_and_idx_left.end());
+    std::sort(correlation_and_idx_left.begin(), correlation_and_idx_left.end(),
+              [](const std::pair<int,data::keypoint&> &left, const std::pair<int,data::keypoint&> &right) {
+                    return left.first < right.first;
+                });
+
     const auto median_i = correlation_and_idx_left.size() / 2;
     const float median_correlation = correlation_and_idx_left.empty()
                                          ? 0.0f
@@ -103,10 +105,10 @@ void stereo::compute(std::vector<float>& stereo_x_right, std::vector<float>& dep
     // 相関の中央値x2を閾値としているので，iはmedian_iから始めればよい
     for (unsigned int i = median_i; i < correlation_and_idx_left.size(); ++i) {
         const auto correlation = correlation_and_idx_left.at(i).first;
-        const auto idx_left = correlation_and_idx_left.at(i).second;
+        auto keypoint = correlation_and_idx_left.at(i).second;
         if (correlation_thr < correlation) {
-            stereo_x_right.at(idx_left) = -1;
-            depths.at(idx_left) = -1;
+            keypoint.set_depth(-1);
+            keypoint.set_stereo_x_offset(-1);
         }
     }
 }
@@ -121,12 +123,12 @@ std::vector<std::vector<unsigned int>> stereo::get_right_keypoint_indices_in_eac
     }
 
     const unsigned int num_keypts_right = keypts_right_.size();
-    for (unsigned int idx_right = 0; idx_right < num_keypts_right; ++idx_right) {
+    for (unsigned int idx_right = 0; idx_right < keypts_right_.size(); ++idx_right) {
         // 右画像の特徴点のy座標を取得
         const auto& keypt_right = keypts_right_.at(idx_right);
         const float y_right = keypt_right.get_cv_keypoint().pt.y;
         // スケールに応じて座標の不定性を設定
-        const float r = margin * scale_factors_.at(keypts_right_.at(idx_right).get_cv_keypoint().octave);
+        const float r = margin * scale_factors_.at(keypt_right.get_cv_keypoint().octave);
         // 上端と下端を計算
         const int max_r = cvCeil(y_right + r);
         const int min_r = cvFloor(y_right - r);
@@ -140,14 +142,12 @@ std::vector<std::vector<unsigned int>> stereo::get_right_keypoint_indices_in_eac
     return indices_right_in_row;
 }
 
-void stereo::find_closest_keypoints_in_stereo(const unsigned int idx_left, const int scale_level_left,
+void stereo::find_closest_keypoints_in_stereo(const cv::Mat& desc_left, const int scale_level_left,
                                               const std::vector<unsigned int>& candidate_indices_right,
                                               const float min_x_right, const float max_x_right,
                                               unsigned int& best_idx_right, unsigned int& best_hamm_dist) const {
     best_idx_right = 0;
     best_hamm_dist = hamm_dist_thr_;
-
-    const cv::Mat& desc_left = keypts_left_.at(idx_left).get_orb_descriptor_as_cv_mat();
 
     // 左画像の特徴点と右画像の各特徴点のハミング距離を計算する
     // 左画像の特徴点に対して，一番近い右画像の特徴点indexを取得する -> best_idx_right
@@ -165,7 +165,7 @@ void stereo::find_closest_keypoints_in_stereo(const unsigned int idx_left, const
         }
 
         // ハミング距離を計算
-        const auto& desc_right = keypts_right_.at(idx_right).get_orb_descriptor_as_cv_mat();
+        const auto& desc_right = keypt_right.get_orb_descriptor_as_cv_mat();
         const unsigned int hamm_dist = match::compute_descriptor_distance_32(desc_left, desc_right);
 
         if (hamm_dist < best_hamm_dist) {

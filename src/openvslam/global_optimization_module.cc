@@ -274,28 +274,26 @@ void global_optimization_module::correct_covisibility_landmarks(const module::ke
 
         const auto ngh_landmarks = neighbor->get_landmarks();
         for (auto lm : ngh_landmarks) {
-            if (!lm) {
-                continue;
-            }
-            if (lm->will_be_erased()) {
+            auto &current_landmark = lm.second;
+            if (current_landmark->will_be_erased()) {
                 continue;
             }
 
             // avoid duplication
-            if (lm->loop_fusion_identifier_ == cur_keyfrm_->id_) {
+            if (current_landmark->loop_fusion_identifier_ == cur_keyfrm_->id_) {
                 continue;
             }
-            lm->loop_fusion_identifier_ = cur_keyfrm_->id_;
+            current_landmark->loop_fusion_identifier_ = cur_keyfrm_->id_;
 
             // correct position of `lm`
-            const Vec3_t pos_w_before_correction = lm->get_pos_in_world();
+            const Vec3_t pos_w_before_correction = current_landmark->get_pos_in_world();
             const Vec3_t pos_w_after_correction = Sim3_wn_after_correction.map(Sim3_nw_before_correction.map(pos_w_before_correction));
-            lm->set_pos_in_world(pos_w_after_correction);
+            current_landmark->set_pos_in_world(pos_w_after_correction);
             // update geometry
-            lm->update_normal_and_depth();
+            current_landmark->update_normal_and_depth();
 
             // record the reference keyframe used in loop fusion of landmarks
-            lm->ref_keyfrm_id_in_loop_fusion_ = neighbor->id_;
+            current_landmark->ref_keyfrm_id_in_loop_fusion_ = neighbor->id_;
         }
     }
 }
@@ -316,35 +314,36 @@ void global_optimization_module::correct_covisibility_keyframes(const module::ke
     }
 }
 
-void global_optimization_module::replace_duplicated_landmarks(const std::vector<data::landmark*>& curr_match_lms_observed_in_cand,
+/**
+ *
+ * @param curr_match_lms_observed_in_cand maps a keypoint id to the landmark it describes
+ * @param Sim3s_nw_after_correction
+ */
+void global_optimization_module::replace_duplicated_landmarks(const std::map<int, data::landmark*>& curr_match_lms_observed_in_cand,
                                                               const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const {
     // resolve duplications of landmarks between the current keyframe and the loop candidate
     {
         std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
 
-        for (unsigned int idx = 0; idx < cur_keyfrm_->num_keypts_; ++idx) {
-            auto curr_match_lm_in_cand = curr_match_lms_observed_in_cand.at(idx);
-            if (!curr_match_lm_in_cand) {
-                continue;
-            }
-
-            auto lm_in_curr = cur_keyfrm_->get_landmark(idx);
+        for (auto &curr_match_lm_in_cand : curr_match_lms_observed_in_cand) {
+            auto lm_in_curr = cur_keyfrm_->get_landmark(curr_match_lm_in_cand.first);
             if (lm_in_curr) {
                 // if the landmark corresponding `idx` exists,
                 // replace it with `curr_match_lm_in_cand` (observed in the candidate)
-                lm_in_curr->replace(curr_match_lm_in_cand);
+                lm_in_curr->replace(curr_match_lm_in_cand.second);
             }
             else {
-                // if landmark corresponding `idx` does not exists,
+                // if landmark corresponding the keypoint that is used to create this landmark does not exists,
                 // add association between the current keyframe and `curr_match_lm_in_cand`
-                cur_keyfrm_->add_landmark(curr_match_lm_in_cand, idx);
-                curr_match_lm_in_cand->add_observation(cur_keyfrm_, idx);
-                curr_match_lm_in_cand->compute_descriptor();
+                cur_keyfrm_->add_landmark(curr_match_lm_in_cand.second, curr_match_lm_in_cand.first);
+                curr_match_lm_in_cand.second->add_observation(cur_keyfrm_, curr_match_lm_in_cand.first);
+                curr_match_lm_in_cand.second->compute_descriptor();
             }
         }
     }
 
     // resolve duplications of landmarks between the current keyframe and the candidates of the loop candidate
+    // TODO pali: return type changed
     const auto curr_match_lms_observed_in_cand_covis = loop_detector_->current_matched_landmarks_observed_in_candidate_covisibilities();
     match::fuse fuser(0.8);
     for (const auto& t : Sim3s_nw_after_correction) {

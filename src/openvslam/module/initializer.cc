@@ -40,7 +40,7 @@ namespace openvslam {
             return state_;
         }
 
-        std::vector<data::keypoint> initializer::get_initial_keypoints() const {
+        std::map<int, data::keypoint> initializer::get_initial_keypoints() const {
             return init_frm_.keypts_.get_slam_applicable_keypoints();
         }
 
@@ -106,12 +106,12 @@ namespace openvslam {
             // initialize the previously matched coordinates
             prev_matched_slam_applicable_coords_.clear();
             for (auto slam_cv_point : init_frm_.undist_keypts_.get_slam_applicable_keypoints()) {
-                prev_matched_slam_applicable_coords_[slam_cv_point.get_id()] = slam_cv_point.get_cv_keypoint().pt;
+                prev_matched_slam_applicable_coords_[slam_cv_point.first] = slam_cv_point.second.get_cv_keypoint().pt;
             }
 
             prev_matched_slam_forbidden_coords_.clear();
             for (auto non_slam_cv_point : init_frm_.undist_keypts_.get_slam_forbidden_keypoints()) {
-                prev_matched_slam_forbidden_coords_[non_slam_cv_point.get_id()] = non_slam_cv_point.get_cv_keypoint().pt;
+                prev_matched_slam_forbidden_coords_[non_slam_cv_point.first] = non_slam_cv_point.second.get_cv_keypoint().pt;
             }
 
             // build a initializer
@@ -219,14 +219,14 @@ namespace openvslam {
             // assign 2D-3D associations of slam landmarks
             for (auto &match : init_slam_matches_) {
                 // remember the map -> id_frameA -> pair(pointA, pointB)
-                auto lm = new data::landmark(init_triangulated_slam_pts.at(match.first), curr_keyfrm, map_db_);
+                auto lm = new data::landmark(init_triangulated_slam_pts.at(match.first), curr_keyfrm, match.second.second.get_id(), map_db_);
                 configure_new_landmark(curr_frm, init_keyfrm, curr_keyfrm, match.first, match.second.second.get_id(), lm);
             }
 
             // assign 2D-3D associations of landmarks not suitable for slam
             for (auto &match : init_non_slam_matches_) {
                 // remember the map -> id_frameA -> pair(pointA, pointB)
-                auto lm = new data::landmark(init_triangulated_non_slam_pts.at(match.first), curr_keyfrm, map_db_);
+                auto lm = new data::landmark(init_triangulated_non_slam_pts.at(match.first), curr_keyfrm, match.second.second.get_id(), map_db_);
                 configure_new_landmark(curr_frm, init_keyfrm, curr_keyfrm, match.first, match.second.second.get_id(), lm);
             }
 
@@ -283,8 +283,7 @@ namespace openvslam {
             lm->update_normal_and_depth();
 
             // set the 2D-3D assocications to the current frame
-            curr_frm.landmarks_.at(curr_idx) = lm;
-            curr_frm.outlier_flags_.at(curr_idx) = false;
+            curr_frm.landmarks_[lm->get_id()] = lm;
 
             // add the landmark to the map DB
             map_db_->add_landmark(lm);
@@ -299,19 +298,16 @@ namespace openvslam {
             // scaling landmarks
             const auto landmarks = init_keyfrm->get_landmarks();
             for (auto lm : landmarks) {
-                if (!lm) {
-                    continue;
-                }
-                lm->set_pos_in_world(lm->get_pos_in_world() * scale);
+                lm.second->set_pos_in_world(lm.second->get_pos_in_world() * scale);
             }
         }
 
         bool initializer::try_initialize_for_stereo(data::frame &curr_frm) {
             assert(state_ == initializer_state_t::Initializing);
             // count the number of valid depths
-            unsigned int num_valid_depths = std::count_if(curr_frm.depths_.begin(), curr_frm.depths_.end(),
-                                                          [](const float depth) {
-                                                              return 0 < depth;
+            unsigned int num_valid_depths = std::count_if(curr_frm.undist_keypts_.begin(), curr_frm.undist_keypts_.end(),
+                                                          [](const std::pair<int, data::keypoint> &kp) {
+                                                              return 0 < kp.second.get_depth();
                                                           });
             return min_num_triangulated_ <= num_valid_depths;
         }
@@ -333,16 +329,16 @@ namespace openvslam {
             curr_frm.ref_keyfrm_ = curr_keyfrm;
             map_db_->update_frame_statistics(curr_frm, false);
 
-            for (unsigned int idx = 0; idx < curr_frm.num_keypts_; ++idx) {
+            for (unsigned int idx = 0; idx < curr_frm.undist_keypts_.size(); ++idx) {
                 // add a new landmark if tht corresponding depth is valid
-                const auto z = curr_frm.depths_.at(idx);
+                const auto z = curr_frm.undist_keypts_.at(idx).get_depth();
                 if (z <= 0) {
                     continue;
                 }
 
                 // build a landmark
                 const Vec3_t pos_w = curr_frm.triangulate_stereo(idx);
-                auto lm = new data::landmark(pos_w, curr_keyfrm, map_db_);
+                auto lm = new data::landmark(pos_w, curr_keyfrm, idx, map_db_);
 
                 // set the associations to the new keyframe
                 lm->add_observation(curr_keyfrm, idx);
@@ -355,7 +351,6 @@ namespace openvslam {
 
                 // set the 2D-3D associations to the current frame
                 curr_frm.landmarks_.at(idx) = lm;
-                curr_frm.outlier_flags_.at(idx) = false;
 
                 // add the landmark to the map DB
                 map_db_->add_landmark(lm);

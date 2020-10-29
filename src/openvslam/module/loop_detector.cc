@@ -126,22 +126,19 @@ bool loop_detector::validate_candidates() {
 
     // acquire all of the landmarks observed in the covisibilities of the candidate
     // check the already inserted landmarks
-    std::unordered_set<data::landmark*> already_inserted;
+    std::unordered_set<int> already_inserted;
     for (const auto covisibility : cand_covisibilities) {
         const auto lms_in_covisibility = covisibility->get_landmarks();
-        for (const auto lm : lms_in_covisibility) {
-            if (!lm) {
-                continue;
-            }
-            if (lm->will_be_erased()) {
+        for (const auto &lm : lms_in_covisibility) {
+            if (lm.second->will_be_erased()) {
                 continue;
             }
 
-            if (already_inserted.count(lm)) {
+            if (already_inserted.count(lm.first)) {
                 continue;
             }
-            curr_match_lms_observed_in_cand_covis_.push_back(lm);
-            already_inserted.insert(lm);
+            curr_match_lms_observed_in_cand_covis_.insert(lm);
+            already_inserted.insert(lm.first);
         }
     }
 
@@ -154,12 +151,7 @@ bool loop_detector::validate_candidates() {
                                                curr_match_lms_observed_in_cand_, 10);
 
     // count up the matches
-    unsigned int num_final_matches = 0;
-    for (const auto curr_assoc_lm_in_cand : curr_match_lms_observed_in_cand_) {
-        if (curr_assoc_lm_in_cand) {
-            ++num_final_matches;
-        }
-    }
+    unsigned int num_final_matches = curr_match_lms_observed_in_cand_.size();
 
     spdlog::debug("acquired {} matches after projection-match", num_final_matches);
 
@@ -272,7 +264,7 @@ keyframe_sets loop_detector::find_continuously_detected_keyframe_sets(const keyf
 bool loop_detector::select_loop_candidate_via_Sim3(const std::vector<data::keyframe*>& loop_candidates,
                                                    data::keyframe*& selected_candidate,
                                                    g2o::Sim3& g2o_Sim3_world_to_curr,
-                                                   std::vector<data::landmark*>& curr_match_lms_observed_in_cand) const {
+                                                   std::map<int, data::landmark*>& curr_match_lms_observed_in_cand) const {
     // estimate and the Sim3 between the current keyframe and each of the candidates using the observed landmarks
     // the Sim3 is estimated both in linear and non-linear ways
     // if the inlier after the estimation is lower than the threshold, discard tha candidate
@@ -348,11 +340,11 @@ g2o::Sim3 loop_detector::get_Sim3_world_to_current() const {
     return g2o_Sim3_world_to_curr_;
 }
 
-std::vector<data::landmark*> loop_detector::current_matched_landmarks_observed_in_candidate() const {
+std::map<int, data::landmark*> loop_detector::current_matched_landmarks_observed_in_candidate() const {
     return curr_match_lms_observed_in_cand_;
 }
 
-std::vector<data::landmark*> loop_detector::current_matched_landmarks_observed_in_candidate_covisibilities() const {
+std::map<int, data::landmark*> loop_detector::current_matched_landmarks_observed_in_candidate_covisibilities() const {
     return curr_match_lms_observed_in_cand_covis_;
 }
 

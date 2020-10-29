@@ -26,7 +26,6 @@ namespace openvslam {
             // Extract ORB feature
             extract_orb(img_gray, seg_img, mask);
 
-            num_keypts_ = keypts_.size();
             if (keypts_.empty()) {
                 spdlog::warn("frame {}: cannot extract any keypoints", id_);
             }
@@ -35,19 +34,11 @@ namespace openvslam {
             camera_->undistort_keypoints(keypts_, undist_keypts_);
             assert(keypts_.size() == undist_keypts_.size());
 
-            // Ignore stereo parameters
-            stereo_x_right_ = std::vector<float>(num_keypts_, -1);
-            depths_ = std::vector<float>(num_keypts_, -1);
-
             // Convert to bearing vector
             camera->convert_keypoints_to_bearings(undist_keypts_);
 
-            // Initialize association with 3D points
-            landmarks_ = std::vector<openvslam::data::landmark *>(num_keypts_, nullptr);
-            outlier_flags_ = std::vector<bool>(num_keypts_, false);
-
             // Assign all the keypoints into grid
-            assign_keypoints_to_grid(camera_, undist_keypts_.get_all_cv_keypoints(), keypt_indices_in_cells_);
+            assign_keypoints_to_grid(camera_, undist_keypts_, keypt_indices_in_cells_);
         }
 
         // stereo image
@@ -71,7 +62,6 @@ namespace openvslam {
             thread_left.join();
             thread_right.join();
 
-            num_keypts_ = keypts_.size();
             if (keypts_.empty()) {
                 spdlog::warn("frame {}: cannot extract any keypoints", id_);
             }
@@ -84,17 +74,13 @@ namespace openvslam {
                                          keypts_, keypts_right_,
                                          scale_factors_, inv_scale_factors_,
                                          camera->focal_x_baseline_, camera_->true_baseline_);
-            stereo_matcher.compute(stereo_x_right_, depths_);
+            stereo_matcher.compute();
 
             // Convert to bearing vector
             camera->convert_keypoints_to_bearings(undist_keypts_);
 
-            // Initialize association with 3D points
-            landmarks_ = std::vector<openvslam::data::landmark *>(num_keypts_, nullptr);
-            outlier_flags_ = std::vector<bool>(num_keypts_, false);
-
             // Assign all the keypoints into grid
-            openvslam::data::assign_keypoints_to_grid(camera_, undist_keypts_.get_all_cv_keypoints(), keypt_indices_in_cells_);
+            openvslam::data::assign_keypoints_to_grid(camera_, undist_keypts_, keypt_indices_in_cells_);
         }
 
         // depth image
@@ -110,7 +96,6 @@ namespace openvslam {
 
             // Extract ORB feature
             extract_orb(img_gray, seg_img, mask);
-            num_keypts_ = keypts_.size();
             if (keypts_.empty()) {
                 spdlog::warn("frame {}: cannot extract any keypoints", id_);
             }
@@ -124,28 +109,9 @@ namespace openvslam {
             // Convert to bearing vector
             camera->convert_keypoints_to_bearings(undist_keypts_);
 
-            // Initialize association with 3D points
-            landmarks_ = std::vector<openvslam::data::landmark *>(num_keypts_, nullptr);
-            outlier_flags_ = std::vector<bool>(num_keypts_, false);
-
             // Assign all the keypoints into grid
-            assign_keypoints_to_grid(camera_, undist_keypts_.get_all_cv_keypoints(), keypt_indices_in_cells_);
+            assign_keypoints_to_grid(camera_, undist_keypts_, keypt_indices_in_cells_);
         }
-//
-//        // TODO pali: the stereo problem remains, is this handled somewhere else in the code?
-//        void segmentation_frame::filter_by_segmentation_stereo(const cv::Mat &left_seg_img,
-//                                                               const cv::Mat &right_seg_img) {
-//            auto left_seg_filter = [left_seg_img, this](cv::KeyPoint &kp) {
-//                return !this->seg_cfg->allowed_for_landmark(left_seg_img.at<cv::Vec3b>(kp.pt)[0]);
-//            };
-//            auto right_seg_filter = [right_seg_img, this](cv::KeyPoint &kp) {
-//                return !this->seg_cfg->allowed_for_landmark(right_seg_img.at<cv::Vec3b>(kp.pt)[0]);
-//            };
-//
-//            keypts_.erase(std::remove_if(keypts_.begin(), keypts_.end(), left_seg_filter), keypts_.end());
-//            keypts_right_.erase(std::remove_if(keypts_right_.begin(), keypts_right_.end(), right_seg_filter),
-//                                keypts_right_.end());
-//        }
 
         void segmentation_frame::extract_orb(const cv::Mat &img, const cv::Mat &seg_img, const cv::Mat &mask,
                                              const frame::image_side &img_side) {

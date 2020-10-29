@@ -22,7 +22,8 @@ bool frame_tracker::motion_based_track(data::frame& curr_frm, const data::frame&
     curr_frm.set_cam_pose(velocity * last_frm.cam_pose_cw_);
 
     // 2D-3D対応を初期化
-    std::fill(curr_frm.landmarks_.begin(), curr_frm.landmarks_.end(), nullptr);
+//    std::fill(curr_frm.landmarks_.begin(), curr_frm.landmarks_.end(), nullptr);
+    curr_frm.landmarks_.clear();
 
     // last frameで見えている3次元点を再投影して2D-3D対応を見つける
     const float margin = (camera_->setup_type_ != camera::setup_type_t::Stereo) ? 20 : 10;
@@ -30,7 +31,8 @@ bool frame_tracker::motion_based_track(data::frame& curr_frm, const data::frame&
 
     if (num_matches < num_matches_thr_) {
         // marginを広げて再探索
-        std::fill(curr_frm.landmarks_.begin(), curr_frm.landmarks_.end(), nullptr);
+//        std::fill(curr_frm.landmarks_.begin(), curr_frm.landmarks_.end(), nullptr);
+        curr_frm.landmarks_.clear();
         num_matches = projection_matcher.match_current_and_last_frames(curr_frm, last_frm, 2 * margin);
     }
 
@@ -61,7 +63,7 @@ bool frame_tracker::bow_match_based_track(data::frame& curr_frm, const data::fra
     curr_frm.compute_bow();
 
     // keyframeとframeで2D対応を探して，frameの特徴点とkeyframeで観測している3次元点の対応を得る
-    std::vector<data::landmark*> matched_lms_in_curr;
+    std::map<int, data::landmark*> matched_lms_in_curr;
     auto num_matches = bow_matcher.match_frame_and_keyframe(ref_keyfrm, curr_frm, matched_lms_in_curr);
 
     if (num_matches < num_matches_thr_) {
@@ -93,7 +95,7 @@ bool frame_tracker::robust_match_based_track(data::frame& curr_frm, const data::
     match::robust robust_matcher(0.8, false);
 
     // keyframeとframeで2D対応を探して，frameの特徴点とkeyframeで観測している3次元点の対応を得る
-    std::vector<data::landmark*> matched_lms_in_curr;
+    std::map<int, data::landmark*> matched_lms_in_curr;
     auto num_matches = robust_matcher.match_frame_and_keyframe(curr_frm, ref_keyfrm, matched_lms_in_curr);
 
     if (num_matches < num_matches_thr_) {
@@ -124,22 +126,16 @@ bool frame_tracker::robust_match_based_track(data::frame& curr_frm, const data::
 unsigned int frame_tracker::discard_outliers(data::frame& curr_frm) const {
     unsigned int num_valid_matches = 0;
 
-    for (unsigned int idx = 0; idx < curr_frm.num_keypts_; ++idx) {
-        if (!curr_frm.landmarks_.at(idx)) {
-            continue;
-        }
-
-        auto lm = curr_frm.landmarks_.at(idx);
-
-        if (curr_frm.outlier_flags_.at(idx)) {
-            curr_frm.landmarks_.at(idx) = nullptr;
-            curr_frm.outlier_flags_.at(idx) = false;
-            lm->is_observable_in_tracking_ = false;
-            lm->identifier_in_local_lm_search_ = curr_frm.id_;
+    for (auto iter = curr_frm.landmarks_.begin(); iter != curr_frm.landmarks_.end();) {
+        if (iter->second->is_outlier()) {
+            iter->second->is_observable_in_tracking_ = false;
+            iter->second->identifier_in_local_lm_search_ = curr_frm.id_;
+            curr_frm.landmarks_.erase(iter++);
             continue;
         }
 
         ++num_valid_matches;
+        iter++;
     }
 
     return num_valid_matches;

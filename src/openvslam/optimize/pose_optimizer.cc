@@ -43,7 +43,7 @@ unsigned int pose_optimizer::optimize(data::frame& frm) const {
     frm_vtx->setFixed(false);
     optimizer.addVertex(frm_vtx);
 
-    const unsigned int num_keypts = frm.num_keypts_;
+    const unsigned int num_keypts = frm.undist_keypts_.size();
 
     // 3. landmarkのvertexをreprojection edgeで接続する
 
@@ -60,27 +60,23 @@ unsigned int pose_optimizer::optimize(data::frame& frm) const {
     constexpr float chi_sq_3D = 7.81473;
     const float sqrt_chi_sq_3D = std::sqrt(chi_sq_3D);
 
-    for (unsigned int idx = 0; idx < num_keypts; ++idx) {
-        auto lm = frm.landmarks_.at(idx);
-        if (!lm) {
-            continue;
-        }
-        if (lm->will_be_erased()) {
+    for (auto &lm : frm.landmarks_) {
+        if (lm.second->will_be_erased()) {
             continue;
         }
 
         ++num_init_obs;
-        frm.outlier_flags_.at(idx) = false;
+        lm.second->set_outlier(false);
 
         // frameのvertexをreprojection edgeで接続する
-        const auto& undist_keypt = frm.undist_keypts_.at(idx);
-        const float x_right = frm.stereo_x_right_.at(idx);
+        const auto& undist_keypt = frm.undist_keypts_.at(lm.first);
+        const float x_right = undist_keypt.get_stereo_x_offset();
         const float inv_sigma_sq = frm.inv_level_sigma_sq_.at(undist_keypt.get_cv_keypoint().octave);
         const auto sqrt_chi_sq = (frm.camera_->setup_type_ == camera::setup_type_t::Monocular)
                                      ? sqrt_chi_sq_2D
                                      : sqrt_chi_sq_3D;
-        auto pose_opt_edge_wrap = pose_opt_edge_wrapper(&frm, frm_vtx, lm->get_pos_in_world(),
-                                                        idx, undist_keypt.get_cv_keypoint().pt.x, undist_keypt.get_cv_keypoint().pt.y, x_right,
+        auto pose_opt_edge_wrap = pose_opt_edge_wrapper(&frm, frm_vtx, lm.second->get_pos_in_world(),
+                                                        lm.first, undist_keypt.get_cv_keypoint().pt.x, undist_keypt.get_cv_keypoint().pt.y, x_right,
                                                         inv_sigma_sq, sqrt_chi_sq);
         pose_opt_edge_wraps.push_back(pose_opt_edge_wrap);
         optimizer.addEdge(pose_opt_edge_wrap.edge_);
@@ -102,29 +98,29 @@ unsigned int pose_optimizer::optimize(data::frame& frm) const {
         for (auto& pose_opt_edge_wrap : pose_opt_edge_wraps) {
             auto edge = pose_opt_edge_wrap.edge_;
 
-            if (frm.outlier_flags_.at(pose_opt_edge_wrap.idx_)) {
+            if (frm.landmarks_.at(pose_opt_edge_wrap.idx_)->is_outlier()) {
                 edge->computeError();
             }
 
             if (pose_opt_edge_wrap.is_monocular_) {
                 if (chi_sq_2D < edge->chi2()) {
-                    frm.outlier_flags_.at(pose_opt_edge_wrap.idx_) = true;
+                    frm.landmarks_.at(pose_opt_edge_wrap.idx_)->set_outlier(true);
                     pose_opt_edge_wrap.set_as_outlier();
                     ++num_bad_obs;
                 }
                 else {
-                    frm.outlier_flags_.at(pose_opt_edge_wrap.idx_) = false;
+                    frm.landmarks_.at(pose_opt_edge_wrap.idx_)->set_outlier(false);
                     pose_opt_edge_wrap.set_as_inlier();
                 }
             }
             else {
                 if (chi_sq_3D < edge->chi2()) {
-                    frm.outlier_flags_.at(pose_opt_edge_wrap.idx_) = true;
+                    frm.landmarks_.at(pose_opt_edge_wrap.idx_)->set_outlier(true);
                     pose_opt_edge_wrap.set_as_outlier();
                     ++num_bad_obs;
                 }
                 else {
-                    frm.outlier_flags_.at(pose_opt_edge_wrap.idx_) = false;
+                    frm.landmarks_.at(pose_opt_edge_wrap.idx_)->set_outlier(false);
                     pose_opt_edge_wrap.set_as_inlier();
                 }
             }

@@ -37,7 +37,7 @@ cv::Mat convert_json_to_descriptors(const nlohmann::json& json_descriptors);
  * @param undist_keypts
  * @param keypt_indices_in_cells
  */
-void assign_keypoints_to_grid(camera::base* camera, const std::vector<cv::KeyPoint>& undist_keypts,
+void assign_keypoints_to_grid(camera::base* camera, const data::keypoint_container& undist_keypts,
                               std::vector<std::vector<std::vector<unsigned int>>>& keypt_indices_in_cells);
 
 /**
@@ -46,7 +46,7 @@ void assign_keypoints_to_grid(camera::base* camera, const std::vector<cv::KeyPoi
  * @param undist_keypts
  * @return
  */
-auto assign_keypoints_to_grid(camera::base* camera, const std::vector<cv::KeyPoint>& undist_keypts)
+auto assign_keypoints_to_grid(camera::base* camera, const data::keypoint_container& undist_keypts)
     -> std::vector<std::vector<std::vector<unsigned int>>>;
 
 /**

@@ -34,7 +34,7 @@ namespace openvslam {
             }
             const auto num_candidates = reloc_candidates.size();
 
-            std::vector<std::vector<data::landmark *>> matched_landmarks(num_candidates);
+            std::vector<std::map<int, data::landmark *>> matched_landmarks(num_candidates);
 
             // 各候補について，BoW tree matcherで対応点を求める
             for (unsigned int i = 0; i < num_candidates; ++i) {
@@ -52,9 +52,10 @@ namespace openvslam {
 
                 // setup PnP solver with the current 2D-3D matches
                 const auto valid_indices = extract_valid_indices(matched_landmarks.at(i));
+
                 auto pnp_solver = setup_pnp_solver(valid_indices,
                                                    curr_frm.undist_keypts_.get_slam_applicable_bearings(),
-                                                   curr_frm.keypts_.get_slam_applicable_cv_keypoints(),
+                                                   curr_frm.keypts_.get_slam_applicable_keypoints(),
                                                    matched_landmarks.at(i), curr_frm.scale_factors_);
 
                 // 1. Estimate the camera pose with EPnP(+RANSAC)
@@ -73,11 +74,13 @@ namespace openvslam {
                 const auto inlier_indices = util::resample_by_indices(valid_indices, pnp_solver->get_inlier_flags());
 
                 // set 2D-3D matches for the pose optimization
-                curr_frm.landmarks_ = std::vector<data::landmark *>(curr_frm.num_keypts_, nullptr);
+                curr_frm.landmarks_.clear();
                 std::set<data::landmark *> already_found_landmarks;
                 for (const auto idx : inlier_indices) {
                     // 有効な3次元点のみをcurrent frameにセット
-                    curr_frm.landmarks_.at(idx) = matched_landmarks.at(i).at(idx);
+                    if (!matched_landmarks.at(i).at(idx)->is_outlier()) {
+                        curr_frm.landmarks_[idx] = matched_landmarks.at(i).at(idx);
+                    }
                     // すでに特徴点と対応した3次元点を記録しておく
                     already_found_landmarks.insert(matched_landmarks.at(i).at(idx));
                 }
@@ -90,12 +93,12 @@ namespace openvslam {
                 }
 
                 // reject outliers
-                for (unsigned int idx = 0; idx < curr_frm.num_keypts_; idx++) {
-                    if (!curr_frm.outlier_flags_.at(idx)) {
-                        continue;
-                    }
-                    curr_frm.landmarks_.at(idx) = nullptr;
-                }
+//                for (unsigned int idx = 0; idx < curr_frm.num_keypts_; idx++) {
+//                    if (!curr_frm.outlier_flags_.at(idx)) {
+//                        continue;
+//                    }
+//                    curr_frm.landmarks_.at(idx) = nullptr;
+//                }
 
                 // 3. Apply projection match to increase 2D-3D matches
 
@@ -115,11 +118,8 @@ namespace openvslam {
                 if (num_valid_obs < min_num_valid_obs_) {
                     // すでに対応がついているものは除く
                     already_found_landmarks.clear();
-                    for (unsigned int idx = 0; idx < curr_frm.num_keypts_; ++idx) {
-                        if (!curr_frm.landmarks_.at(idx)) {
-                            continue;
-                        }
-                        already_found_landmarks.insert(curr_frm.landmarks_.at(idx));
+                    for (const auto landmark : curr_frm.landmarks_) {
+                        already_found_landmarks.insert(landmark.second);
                     }
                     // もう一度projection matchを行う -> 2D-3D対応を設定
                     auto num_additional = proj_matcher_.match_frame_and_keyframe(curr_frm, reloc_candidates.at(i),
@@ -144,11 +144,11 @@ namespace openvslam {
                 // TODO: current frameのreference keyframeをセットする
 
                 // reject outliers
-                for (unsigned int idx = 0; idx < curr_frm.num_keypts_; ++idx) {
-                    if (!curr_frm.outlier_flags_.at(idx)) {
-                        continue;
+                for (auto iter = curr_frm.landmarks_.begin(); iter != curr_frm.landmarks_.end();) {
+                    if (iter->second->is_outlier()) {
+                        curr_frm.landmarks_.erase(iter);
                     }
-                    curr_frm.landmarks_.at(idx) = nullptr;
+                    iter++;
                 }
 
                 return true;
@@ -159,27 +159,24 @@ namespace openvslam {
         }
 
         std::vector<unsigned int> relocalizer::extract_valid_indices(
-                const std::vector<data::landmark *> &landmarks) const {
+                const std::map<int, data::landmark *> &landmarks) const {
             std::vector<unsigned int> valid_indices;
             valid_indices.reserve(landmarks.size());
-            for (unsigned int idx = 0; idx < landmarks.size(); ++idx) {
-                auto lm = landmarks.at(idx);
-                if (!lm) {
+            for (auto landmark : landmarks) {
+                if (landmark.second->will_be_erased()) {
                     continue;
                 }
-                if (lm->will_be_erased()) {
-                    continue;
-                }
-                valid_indices.push_back(idx);
+                valid_indices.push_back(landmark.first);
             }
             return valid_indices;
         }
 
         std::unique_ptr<solve::pnp_solver> relocalizer::setup_pnp_solver(const std::vector<unsigned int> &valid_indices,
-                                                                         const eigen_alloc_vector<Vec3_t> &bearings,
-                                                                         const std::vector<cv::KeyPoint> &keypts,
-                                                                         const std::vector<data::landmark *> &matched_landmarks,
+                                                                         const eigen_alloc_map<int, Vec3_t> &bearings,
+                                                                         const std::map<int, data::keypoint> &keypts,
+                                                                         const std::map<int, data::landmark *> &matched_landmarks,
                                                                          const std::vector<float> &scale_factors) const {
+            // TODO pali: Not sure if this implementation is actually good
             // resample valid elements
             const auto valid_bearings = util::resample_by_indices(bearings, valid_indices);
             const auto valid_keypts = util::resample_by_indices(keypts, valid_indices);
@@ -190,7 +187,8 @@ namespace openvslam {
             }
             // setup PnP solver
             return std::unique_ptr<solve::pnp_solver>(
-                    new solve::pnp_solver(valid_bearings, valid_keypts, valid_landmarks, scale_factors));
+                new solve::pnp_solver(valid_bearings, valid_keypts, valid_landmarks, scale_factors)
+            );
         }
 
     } // namespace module

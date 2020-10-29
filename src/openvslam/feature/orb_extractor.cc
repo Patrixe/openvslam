@@ -108,7 +108,6 @@ namespace openvslam {
             }
 
             keypts.clear();
-            keypts.reserve(num_keypts);
 
             unsigned int offset = 0;
             for (unsigned int level = 0; level < orb_params_.num_levels_; ++level) {
@@ -127,7 +126,7 @@ namespace openvslam {
 
                 correct_keypoint_scale(keypts_at_level, level);
 
-                keypts.insert(keypts.end(), keypts_at_level.begin(), keypts_at_level.end());
+                keypts.insert(keypts_at_level.begin(), keypts_at_level.end());
             }
         }
 
@@ -267,42 +266,41 @@ namespace openvslam {
             all_keypts.resize(orb_params_.num_levels_);
 
             // An anonymous function which checks mask(image or rectangle)
-            auto is_in_mask = [&mask](const unsigned int y, const unsigned int x, const float scale_factor) {
+            auto is_in_mask = [&mask](const int y, const int x, const float scale_factor) {
                 return mask.at<unsigned char>(y * scale_factor, x * scale_factor) == 0;
             };
 
-            constexpr unsigned int overlap = 6;
-            constexpr unsigned int cell_size = 64;
+            constexpr int overlap = 6;
+            constexpr int cell_size = 64;
 
 #ifdef USE_OPENMP
 #pragma omp parallel for
 #endif
-            for (unsigned int level = 0; level < orb_params_.num_levels_; ++level) {
+            for (int level = 0; level < orb_params_.num_levels_; ++level) {
                 const float scale_factor = scale_factors_.at(level);
 
-                constexpr unsigned int min_border_x = orb_patch_radius_;
-                constexpr unsigned int min_border_y = orb_patch_radius_;
-                const unsigned int max_border_x = image_pyramid_.at(level).cols - orb_patch_radius_;
-                const unsigned int max_border_y = image_pyramid_.at(level).rows - orb_patch_radius_;
+                constexpr int min_border_x = orb_patch_radius_;
+                constexpr int min_border_y = orb_patch_radius_;
+                const int max_border_x = image_pyramid_.at(level).cols - orb_patch_radius_;
+                const int max_border_y = image_pyramid_.at(level).rows - orb_patch_radius_;
 
-                const unsigned int width = max_border_x - min_border_x;
-                const unsigned int height = max_border_y - min_border_y;
+                const int width = max_border_x - min_border_x;
+                const int height = max_border_y - min_border_y;
 
-                const unsigned int num_cols = std::ceil(width / cell_size) + 1;
-                const unsigned int num_rows = std::ceil(height / cell_size) + 1;
+                const int num_cols = std::ceil(width / cell_size) + 1;
+                const int num_rows = std::ceil(height / cell_size) + 1;
 
                 data::keypoint_container keypts_to_distribute;
-                keypts_to_distribute.reserve(orb_params_.max_num_keypts_ * 10);
 
 #ifdef USE_OPENMP
 #pragma omp parallel for
 #endif
-                for (unsigned int i = 0; i < num_rows; ++i) {
-                    const unsigned int min_y = min_border_y + i * cell_size;
+                for (int i = 0; i < num_rows; ++i) {
+                    const int min_y = min_border_y + i * cell_size;
                     if (max_border_y - overlap <= min_y) {
                         continue;
                     }
-                    unsigned int max_y = min_y + cell_size + overlap;
+                    int max_y = min_y + cell_size + overlap;
                     if (max_border_y < max_y) {
                         max_y = max_border_y;
                     }
@@ -311,11 +309,11 @@ namespace openvslam {
 #pragma omp parallel for
 #endif
                     for (unsigned int j = 0; j < num_cols; ++j) {
-                        const unsigned int min_x = min_border_x + j * cell_size;
+                        const int min_x = min_border_x + j * cell_size;
                         if (max_border_x - overlap <= min_x) {
                             continue;
                         }
-                        unsigned int max_x = min_x + cell_size + overlap;
+                        int max_x = min_x + cell_size + overlap;
                         if (max_border_x < max_x) {
                             max_x = max_border_x;
                         }
@@ -354,13 +352,13 @@ namespace openvslam {
                                 is_in_mask(min_border_y + keypt.pt.y, min_border_x + keypt.pt.x, scale_factor)) {
                                 continue;
                             }
-                            keypts_to_distribute.push_back(data::keypoint(keypt));
+                            const data::keypoint &keypoint = data::keypoint(keypt);
+                            keypts_to_distribute.insert(std::pair<int, data::keypoint>(keypoint.get_id(), keypoint));
                         }
                     }
                 }
 
                 data::keypoint_container& keypts_at_level = all_keypts.at(level);
-                keypts_at_level.reserve(orb_params_.max_num_keypts_);
 
                 // Distribute keypoints via tree
                 keypts_at_level = distribute_keypoints_via_tree(keypts_to_distribute,
@@ -374,11 +372,11 @@ namespace openvslam {
 
                 for (auto &keypt : keypts_at_level) {
                     // Translation correction (scale will be corrected after ORB description)
-                    keypt.get_cv_keypoint().pt.x += min_border_x;
-                    keypt.get_cv_keypoint().pt.y += min_border_y;
+                    keypt.second.get_cv_keypoint().pt.x += min_border_x;
+                    keypt.second.get_cv_keypoint().pt.y += min_border_y;
                     // Set the other information
-                    keypt.get_cv_keypoint().octave = level;
-                    keypt.get_cv_keypoint().size = scaled_patch_size;
+                    keypt.second.get_cv_keypoint().octave = level;
+                    keypt.second.get_cv_keypoint().size = scaled_patch_size;
                 }
             }
 
@@ -512,7 +510,6 @@ namespace openvslam {
 
                 node.pt_begin_ = cv::Point2i(delta_x * ix, delta_y * iy);
                 node.pt_end_ = cv::Point2i(delta_x * (ix + 1), delta_y * (iy + 1));
-                node.keypts_.reserve(keypts_to_distribute.size());
 
                 nodes.push_back(node);
                 initial_nodes.at(i) = &nodes.back();
@@ -521,11 +518,11 @@ namespace openvslam {
             // Assign all keypoints to initial nodes which own keypoint's position
             for (const auto &keypt : keypts_to_distribute) {
                 // x / y index of the patch where the keypt is placed
-                const unsigned int ix = keypt.get_cv_keypoint().pt.x / delta_x;
-                const unsigned int iy = keypt.get_cv_keypoint().pt.y / delta_y;
+                const unsigned int ix = keypt.second.get_cv_keypoint().pt.x / delta_x;
+                const unsigned int iy = keypt.second.get_cv_keypoint().pt.y / delta_y;
 
                 const unsigned int node_idx = ix + iy * num_x_grid;
-                initial_nodes.at(node_idx)->keypts_.push_back(keypt);
+                initial_nodes.at(node_idx)->keypts_.insert(keypt);
             }
 
             auto iter = nodes.begin();
@@ -561,25 +558,24 @@ namespace openvslam {
         }
 
         data::keypoint_container orb_extractor::find_keypoints_with_max_response(
-                std::list<orb_extractor_node> &nodes) const {
+                std::list<orb_extractor_node> &nodes) {
             // A vector contains result keypoint
             data::keypoint_container result_keypts;
-            result_keypts.reserve(nodes.size());
 
             // Store keypoints which has maximum response in the node patch
             for (auto &node : nodes) {
                 auto &node_keypts = node.keypts_;
-                auto &keypt = node_keypts.at(0);
-                double max_response = keypt.get_cv_keypoint().response;
+                std::reference_wrapper<std::pair<const int, data::keypoint>> keypt = *node_keypts.begin();
+                double max_response = keypt.get().second.get_cv_keypoint().response;
 
-                for (unsigned int k = 1; k < node_keypts.size(); ++k) {
-                    if (node_keypts.at(k).get_cv_keypoint().response > max_response) {
-                        keypt = node_keypts.at(k);
-                        max_response = node_keypts.at(k).get_cv_keypoint().response;
+                for (auto &node_keypoint : node_keypts) {
+                    if (node_keypoint.second.get_cv_keypoint().response > max_response) {
+                        keypt = node_keypoint;
+                        max_response = node_keypoint.second.get_cv_keypoint().response;
                     }
                 }
 
-                result_keypts.push_back(keypt);
+                result_keypts.insert(keypt.get());
             }
 
             return result_keypts;
@@ -587,7 +583,7 @@ namespace openvslam {
 
         void orb_extractor::compute_orientation(const cv::Mat &image, data::keypoint_container &keypts) const {
             for (auto &keypt : keypts) {
-                keypt.get_cv_keypoint().angle = ic_angle(image, keypt.get_cv_keypoint().pt);
+                keypt.second.get_cv_keypoint().angle = ic_angle(image, keypt.second.get_cv_keypoint().pt);
             }
         }
 
@@ -598,7 +594,7 @@ namespace openvslam {
             }
             const float scale_at_level = scale_factors_.at(level);
             for (auto &keypt_at_level : keypts_at_level) {
-                keypt_at_level.get_cv_keypoint().pt *= scale_at_level;
+                keypt_at_level.second.get_cv_keypoint().pt *= scale_at_level;
             }
         }
 
@@ -628,8 +624,8 @@ namespace openvslam {
         }
 
         void orb_extractor::compute_orb_descriptors(const cv::Mat &image, data::keypoint_container &keypts) const {
-            for (unsigned int i = 0; i < keypts.size(); ++i) {
-                compute_orb_descriptor(keypts.at(i), image);
+            for (auto &keypoint : keypts) {
+                compute_orb_descriptor(keypoint.second, image);
             }
         }
 

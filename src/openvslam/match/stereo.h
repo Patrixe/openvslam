@@ -17,7 +17,7 @@ public:
     stereo() = delete;
 
     stereo(const std::vector<cv::Mat>& left_image_pyramid, const std::vector<cv::Mat>& right_image_pyramid,
-           const openvslam::data::keypoint_container &keypts_left, const data::keypoint_container &keypts_right,
+           openvslam::data::keypoint_container &keypts_left, data::keypoint_container &keypts_right,
            const std::vector<float>& scale_factors, const std::vector<float>& inv_scale_factors,
            const float focal_x_baseline, const float true_baseline);
 
@@ -26,7 +26,7 @@ public:
     /**
      * Compute stereo matching in subpixel order
      */
-    void compute(std::vector<float>& stereo_x_right, std::vector<float>& depths) const;
+    void compute() const;
 
 private:
     /**
@@ -46,7 +46,7 @@ private:
      * @param best_idx_right
      * @param best_hamm_dist
      */
-    void find_closest_keypoints_in_stereo(const unsigned int idx_left, const int scale_level_left,
+    void find_closest_keypoints_in_stereo(const cv::Mat& desc_left, const int scale_level_left,
                                           const std::vector<unsigned int>& candidate_indices_right,
                                           const float min_x_right, const float max_x_right,
                                           unsigned int& best_idx_right, unsigned int& best_hamm_dist) const;
@@ -71,9 +71,9 @@ private:
     //! number of keypoints
     const unsigned int num_keypts_;
     //! reference to keypoints in left image
-    const data::keypoint_container& keypts_left_;
+    data::keypoint_container& keypts_left_;
     //! reference to keypoints in right image
-    const data::keypoint_container& keypts_right_;
+    data::keypoint_container& keypts_right_;
 
     //! reference to scale factors
     const std::vector<float>& scale_factors_;

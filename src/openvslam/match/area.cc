@@ -10,8 +10,8 @@ namespace openvslam {
                                                     // maps: point_id of point in frame a -> pair(point of frameA, point of frameB)
                                                     std::map<int, std::pair<data::keypoint, data::keypoint>> &found_matches,
                                                     int margin,
-                                                    const std::vector<data::keypoint> &frame_1_slam_cv_points,
-                                                    const std::vector<data::keypoint> &frame_2_slam_cv_points) {
+                                                    const std::map<int, data::keypoint> &frame_1_slam_cv_points,
+                                                    const std::map<int, data::keypoint> &frame_2_slam_cv_points) {
             if (frame_1_slam_cv_points.empty() || frame_2_slam_cv_points.empty()) {
                 return 0;
             }
@@ -21,16 +21,16 @@ namespace openvslam {
             angle_checker<int> angle_checker;
             std::map<int, unsigned int> matched_dists_in_frm_2;
             for (auto point : frame_2_slam_cv_points) {
-                matched_dists_in_frm_2.insert(std::pair<int, unsigned int>(point.get_id(), MAX_HAMMING_DIST));
+                matched_dists_in_frm_2.insert(std::pair<int, unsigned int>(point.first, MAX_HAMMING_DIST));
             }
 
             std::map<int, int> matched_indices_1_in_frm_2;
             for (auto point : frame_2_slam_cv_points) {
-                matched_indices_1_in_frm_2.insert(std::pair<int, int>(point.get_id(), -1));
+                matched_indices_1_in_frm_2.insert(std::pair<int, int>(point.first, -1));
             }
 
             for (const auto &frame_a_point : frame_1_slam_cv_points) {
-                const auto scale_level_1 = frame_a_point.get_cv_keypoint().octave;
+                const auto scale_level_1 = frame_a_point.second.get_cv_keypoint().octave;
 
                 // 第0スケールの特徴点のみを用いる
                 if (0 < scale_level_1) {
@@ -41,14 +41,14 @@ namespace openvslam {
                 // if the initialization process takes more than two frames, this is used to "track" the movement of a
                 // point from the initial frame to the frame thats processed now. The gap between the correct matches would otherwise increase every frame.
                 std::vector<std::reference_wrapper<const data::keypoint>> neighbouring_keypoints = frm_2.get_keypoints_in_cell(
-                        prev_matched_pts.at(frame_a_point.get_id()).x, prev_matched_pts.at(frame_a_point.get_id()).y,
+                        prev_matched_pts.at(frame_a_point.first).x, prev_matched_pts.at(frame_a_point.first).y,
                         margin, scale_level_1, scale_level_1);
 
                 if (neighbouring_keypoints.empty()) {
                     continue;
                 }
 
-                const auto &frame_a_point_descriptor = frame_a_point.get_orb_descriptor_as_cv_mat();
+                const auto &frame_a_point_descriptor = frame_a_point.second.get_orb_descriptor_as_cv_mat();
 
                 unsigned int best_hamm_dist = MAX_HAMMING_DIST;
                 unsigned int second_best_hamm_dist = MAX_HAMMING_DIST;
@@ -98,16 +98,16 @@ namespace openvslam {
 
                 // 互いの対応情報を記録する
                 found_matches.insert(std::pair<int, std::pair<data::keypoint, data::keypoint>> (
-                        frame_a_point.get_id(),
-                        std::pair<data::keypoint, data::keypoint>(frame_a_point, best_matching_keypoint_of_frame_b.get()))
+                        frame_a_point.first,
+                        std::pair<data::keypoint, data::keypoint>(frame_a_point.second, best_matching_keypoint_of_frame_b.get()))
                 );
-                matched_indices_1_in_frm_2.at(best_matching_keypoint_of_frame_b.get().get_id()) = frame_a_point.get_id();
+                matched_indices_1_in_frm_2.at(best_matching_keypoint_of_frame_b.get().get_id()) = frame_a_point.first;
                 matched_dists_in_frm_2.at(best_matching_keypoint_of_frame_b.get().get_id()) = best_hamm_dist;
 
                 if (check_orientation_) {
-                    const auto delta_angle = frame_a_point.get_cv_keypoint().angle
+                    const auto delta_angle = frame_a_point.second.get_cv_keypoint().angle
                                              - best_matching_keypoint_of_frame_b.get().get_cv_keypoint().angle;
-                    angle_checker.append_delta_angle(delta_angle, frame_a_point.get_id());
+                    angle_checker.append_delta_angle(delta_angle, frame_a_point.first);
                 }
             }
 

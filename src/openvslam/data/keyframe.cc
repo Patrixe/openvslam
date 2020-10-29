@@ -25,11 +25,10 @@ keyframe::keyframe(const frame& frm, map_database* map_db, bow_database* bow_db)
       // camera parameters
       camera_(frm.camera_), depth_thr_(frm.depth_thr_),
       // constant observations
-      num_keypts_(frm.num_keypts_), keypts_(frm.keypts_), undist_keypts_(frm.undist_keypts_),
+      keypts_(frm.keypts_), undist_keypts_(frm.undist_keypts_),
       keypt_indices_in_cells_(frm.keypt_indices_in_cells_),
-      stereo_x_right_(frm.stereo_x_right_), depths_(frm.depths_),
       // BoW
-      bow_vec_(frm.bow_vec_), bow_feat_vec_(frm.bow_feat_vec_),
+      bow_vec_(frm.bow_vec_), bow_feat_vec_(frm.bow_feat_vec_), bow_vector_translation(frm.bow_vector_translation),
       // covisibility graph node (connections is not assigned yet)
       graph_node_(std::unique_ptr<graph_node>(new graph_node(this, true))),
       // ORB scale pyramid
@@ -46,9 +45,7 @@ keyframe::keyframe(const frame& frm, map_database* map_db, bow_database* bow_db)
 
 keyframe::keyframe(const unsigned int id, const unsigned int src_frm_id, const double timestamp,
                    const Mat44_t& cam_pose_cw, camera::base* camera, const float depth_thr,
-                   const unsigned int num_keypts, keypoint_container keypts,
-                   keypoint_container undist_keypts,
-                   const std::vector<float>& stereo_x_right, const std::vector<float>& depths,
+                   keypoint_container keypts, keypoint_container undist_keypts,
                    const unsigned int num_scale_levels, const float scale_factor,
                    bow_vocabulary* bow_vocab, bow_database* bow_db, map_database* map_db)
     : // meta information
@@ -56,9 +53,8 @@ keyframe::keyframe(const unsigned int id, const unsigned int src_frm_id, const d
       // camera parameters
       camera_(camera), depth_thr_(depth_thr),
       // constant observations
-      num_keypts_(num_keypts), keypts_(std::move(keypts)), undist_keypts_(std::move(undist_keypts)),
-      keypt_indices_in_cells_(assign_keypoints_to_grid(camera, undist_keypts.get_all_cv_keypoints())),
-      stereo_x_right_(stereo_x_right), depths_(depths),
+      keypts_(std::move(keypts)), undist_keypts_(std::move(undist_keypts)),
+      keypt_indices_in_cells_(assign_keypoints_to_grid(camera, undist_keypts)),
 
       // graph node (connections is not assigned yet)
       graph_node_(std::unique_ptr<graph_node>(new graph_node(this, false))),
@@ -68,7 +64,7 @@ keyframe::keyframe(const unsigned int id, const unsigned int src_frm_id, const d
       level_sigma_sq_(feature::orb_params::calc_level_sigma_sq(num_scale_levels, scale_factor)),
       inv_level_sigma_sq_(feature::orb_params::calc_inv_level_sigma_sq(num_scale_levels, scale_factor)),
       // others
-      landmarks_(std::vector<landmark*>(num_keypts, nullptr)),
+      landmarks_(),
       // databases
       map_db_(map_db), bow_db_(bow_db), bow_vocab_(bow_vocab) {
     // compute BoW (bow_vec_, bow_feat_vec_) using descriptors_
@@ -122,11 +118,9 @@ nlohmann::json keyframe::to_json() const {
             {"rot_cw", convert_rotation_to_json(cam_pose_cw_.block<3, 3>(0, 0))},
             {"trans_cw", convert_translation_to_json(cam_pose_cw_.block<3, 1>(0, 3))},
             // features and observations
-            {"n_keypts", num_keypts_},
+            // TODO pali: Needs adaption for new values in keypoints
             {"keypts", convert_keypoints_to_json(keypts_)},
             {"undists", convert_undistorted_to_json(undist_keypts_)},
-            {"x_rights", stereo_x_right_},
-            {"depths", depths_},
 //            {"descs", convert_descriptors_to_json(descriptors_)}, TODO pali: see implementation of function
             {"lm_ids", landmark_ids},
             // orb scale information
@@ -181,10 +175,14 @@ Vec3_t keyframe::get_translation() const {
     return cam_pose_cw_.block<3, 1>(0, 3);
 }
 
+int keyframe::get_keypoint_id_from_bow_id(int bow_id) {
+    return bow_vector_translation.at(bow_id);
+}
+
 void keyframe::compute_bow() {
     if (bow_vec_.empty() || bow_feat_vec_.empty()) {
 #ifdef USE_DBOW2
-        bow_vocab_->transform(util::converter::to_desc_vec(undist_keypts_), bow_vec_, bow_feat_vec_, 4);
+        bow_vocab_->transform(util::converter::to_desc_vec(undist_keypts_, bow_vector_translation), bow_vec_, bow_feat_vec_, 4);
 #else
         bow_vocab_->transform(descriptors_, 4, bow_vec_, bow_feat_vec_);
 #endif
@@ -193,7 +191,7 @@ void keyframe::compute_bow() {
 
 void keyframe::add_landmark(landmark* lm, const unsigned int idx) {
     std::lock_guard<std::mutex> lock(mtx_observations_);
-    landmarks_.at(idx) = lm;
+    landmarks_[idx] = lm;
 }
 
 void keyframe::erase_landmark_with_index(const unsigned int idx) {
@@ -212,7 +210,7 @@ void keyframe::replace_landmark(landmark* lm, const unsigned int idx) {
     landmarks_.at(idx) = lm;
 }
 
-std::vector<landmark*> keyframe::get_landmarks() const {
+std::map<int, landmark*> keyframe::get_landmarks() const {
     std::lock_guard<std::mutex> lock(mtx_observations_);
     return landmarks_;
 }
@@ -221,15 +219,12 @@ std::set<landmark*> keyframe::get_valid_landmarks() const {
     std::lock_guard<std::mutex> lock(mtx_observations_);
     std::set<landmark*> valid_landmarks;
 
-    for (const auto lm : landmarks_) {
-        if (!lm) {
-            continue;
-        }
-        if (lm->will_be_erased()) {
+    for (const auto &lm : landmarks_) {
+        if (lm.second->will_be_erased()) {
             continue;
         }
 
-        valid_landmarks.insert(lm);
+        valid_landmarks.insert(lm.second);
     }
 
     return valid_landmarks;
@@ -241,24 +236,18 @@ unsigned int keyframe::get_num_tracked_landmarks(const unsigned int min_num_obs_
 
     if (0 < min_num_obs_thr) {
         for (const auto lm : landmarks_) {
-            if (!lm) {
-                continue;
-            }
-            if (lm->will_be_erased()) {
+            if (lm.second->will_be_erased()) {
                 continue;
             }
 
-            if (min_num_obs_thr <= lm->num_observations()) {
+            if (min_num_obs_thr <= lm.second->num_observations()) {
                 ++num_tracked_lms;
             }
         }
     }
     else {
         for (const auto lm : landmarks_) {
-            if (!lm) {
-                continue;
-            }
-            if (lm->will_be_erased()) {
+            if (lm.second->will_be_erased()) {
                 continue;
             }
 
@@ -284,14 +273,16 @@ const std::vector<std::reference_wrapper<const data::keypoint>> keyframe::get_ke
 Vec3_t keyframe::triangulate_stereo(const unsigned int idx) const {
     assert(camera_->setup_type_ != camera::setup_type_t::Monocular);
 
+    const keypoint &keypoint = undist_keypts_.at(idx);
+    const float depth = keypoint.get_depth();
+
     switch (camera_->model_type_) {
         case camera::model_type_t::Perspective: {
             auto camera = static_cast<camera::perspective*>(camera_);
 
-            const float depth = depths_.at(idx);
             if (0.0 < depth) {
-                const float x = undist_keypts_.at(idx).get_cv_keypoint().pt.x;
-                const float y = undist_keypts_.at(idx).get_cv_keypoint().pt.y;
+                const float x = keypoint.get_cv_keypoint().pt.x;
+                const float y = keypoint.get_cv_keypoint().pt.y;
                 const float unproj_x = (x - camera->cx_) * depth * camera->fx_inv_;
                 const float unproj_y = (y - camera->cy_) * depth * camera->fy_inv_;
                 const Vec3_t pos_c{unproj_x, unproj_y, depth};
@@ -306,10 +297,9 @@ Vec3_t keyframe::triangulate_stereo(const unsigned int idx) const {
         case camera::model_type_t::Fisheye: {
             auto camera = static_cast<camera::fisheye*>(camera_);
 
-            const float depth = depths_.at(idx);
             if (0.0 < depth) {
-                const float x = undist_keypts_.at(idx).get_cv_keypoint().pt.x;
-                const float y = undist_keypts_.at(idx).get_cv_keypoint().pt.y;
+                const float x = keypoint.get_cv_keypoint().pt.x;
+                const float y = keypoint.get_cv_keypoint().pt.y;
                 const float unproj_x = (x - camera->cx_) * depth * camera->fx_inv_;
                 const float unproj_y = (y - camera->cy_) * depth * camera->fy_inv_;
                 const Vec3_t pos_c{unproj_x, unproj_y, depth};
@@ -330,25 +320,20 @@ Vec3_t keyframe::triangulate_stereo(const unsigned int idx) const {
 }
 
 float keyframe::compute_median_depth(const bool abs) const {
-    std::vector<landmark*> landmarks;
     Mat44_t cam_pose_cw;
     {
         std::lock_guard<std::mutex> lock1(mtx_observations_);
         std::lock_guard<std::mutex> lock2(mtx_pose_);
-        landmarks = landmarks_;
         cam_pose_cw = cam_pose_cw_;
     }
 
     std::vector<float> depths;
-    depths.reserve(num_keypts_);
+    depths.reserve(landmarks_.size());
     const Vec3_t rot_cw_z_row = cam_pose_cw.block<1, 3>(2, 0);
     const float trans_cw_z = cam_pose_cw(2, 3);
 
-    for (const auto lm : landmarks) {
-        if (!lm) {
-            continue;
-        }
-        const Vec3_t pos_w = lm->get_pos_in_world();
+    for (const auto lm : landmarks_) {
+        const Vec3_t pos_w = lm.second->get_pos_in_world();
         const auto pos_c_z = rot_cw_z_row.dot(pos_w) + trans_cw_z;
         depths.push_back(abs ? std::abs(pos_c_z) : pos_c_z);
     }
@@ -386,10 +371,7 @@ void keyframe::prepare_for_erasing() {
     // 2. remove associations between keypoints and landmarks
 
     for (const auto lm : landmarks_) {
-        if (!lm) {
-            continue;
-        }
-        lm->erase_observation(this);
+        lm.second->erase_observation(this);
     }
 
     // 3. recover covisibility graph and spanning tree

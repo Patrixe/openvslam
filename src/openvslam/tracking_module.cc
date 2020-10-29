@@ -102,7 +102,7 @@ namespace openvslam {
         return mapping_is_enabled_;
     }
 
-    std::vector<data::keypoint> tracking_module::get_initial_keypoints() const {
+    std::map<int, data::keypoint> tracking_module::get_initial_keypoints() const {
         return initializer_.get_initial_keypoints();
     }
 
@@ -331,9 +331,9 @@ namespace openvslam {
             }
 
             // tidy up observations
-            for (unsigned int idx = 0; idx < curr_frm_.num_keypts_; ++idx) {
-                if (curr_frm_.landmarks_.at(idx) && curr_frm_.outlier_flags_.at(idx)) {
-                    curr_frm_.landmarks_.at(idx) = nullptr;
+            for (auto lm : curr_frm_.landmarks_) {
+                if (lm.second->is_outlier()) {
+                    curr_frm_.landmarks_.erase(lm.first);
                 }
             }
         }
@@ -407,15 +407,10 @@ namespace openvslam {
     }
 
     void tracking_module::apply_landmark_replace() {
-        for (unsigned int idx = 0; idx < last_frm_.num_keypts_; ++idx) {
-            auto lm = last_frm_.landmarks_.at(idx);
-            if (!lm) {
-                continue;
-            }
-
-            auto replaced_lm = lm->get_replaced();
+        for (auto lm : last_frm_.landmarks_) {
+            auto replaced_lm = lm.second->get_replaced();
             if (replaced_lm) {
-                last_frm_.landmarks_.at(idx) = replaced_lm;
+                last_frm_.landmarks_[lm.first] = replaced_lm;
             }
         }
     }
@@ -438,23 +433,18 @@ namespace openvslam {
 
         // count up the number of tracked landmarks
         num_tracked_lms_ = 0;
-        for (unsigned int idx = 0; idx < curr_frm_.num_keypts_; ++idx) {
-            auto lm = curr_frm_.landmarks_.at(idx);
-            if (!lm) {
-                continue;
-            }
-
-            if (!curr_frm_.outlier_flags_.at(idx)) {
+        for (auto &lm : curr_frm_.landmarks_) {
+            if (!lm.second->is_outlier()) {
                 // the observation has been considered as inlier in the pose optimization
-                assert(lm->has_observation());
+                assert(lm.second->has_observation());
                 // count up
                 ++num_tracked_lms_;
                 // increment the number of tracked frame
-                lm->increase_num_observed();
+                lm.second->increase_num_observed();
             } else {
                 // the observation has been considered as outlier in the pose optimization
                 // remove the observation
-                curr_frm_.landmarks_.at(idx) = nullptr;
+                curr_frm_.landmarks_.erase(lm.first);
             }
         }
 
@@ -477,13 +467,9 @@ namespace openvslam {
 
     void tracking_module::update_local_map() {
         // clean landmark associations
-        for (unsigned int idx = 0; idx < curr_frm_.num_keypts_; ++idx) {
-            auto lm = curr_frm_.landmarks_.at(idx);
-            if (!lm) {
-                continue;
-            }
-            if (lm->will_be_erased()) {
-                curr_frm_.landmarks_.at(idx) = nullptr;
+        for (auto &lm : curr_frm_.landmarks_) {
+            if (lm.second->will_be_erased()) {
+                curr_frm_.landmarks_.erase(lm.first);
                 continue;
             }
         }
@@ -512,20 +498,17 @@ namespace openvslam {
     void tracking_module::search_local_landmarks() {
         // select the landmarks which can be reprojected from the ones observed in the current frame
         for (auto lm : curr_frm_.landmarks_) {
-            if (!lm) {
-                continue;
-            }
-            if (lm->will_be_erased()) {
+            if (lm.second->will_be_erased()) {
                 continue;
             }
 
             // this landmark cannot be reprojected
             // because already observed in the current frame
-            lm->is_observable_in_tracking_ = false;
-            lm->identifier_in_local_lm_search_ = curr_frm_.id_;
+            lm.second->is_observable_in_tracking_ = false;
+            lm.second->identifier_in_local_lm_search_ = curr_frm_.id_;
 
             // this landmark is observable from the current frame
-            lm->increase_num_observable();
+            lm.second->increase_num_observable();
         }
 
         bool found_proj_candidate = false;

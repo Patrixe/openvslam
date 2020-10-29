@@ -57,9 +57,7 @@ public:
      */
     keyframe(unsigned int id, unsigned int src_frm_id, double timestamp,
              const Mat44_t& cam_pose_cw, camera::base* camera, float depth_thr,
-             unsigned int num_keypts, keypoint_container  keypts,
-             keypoint_container undist_keypts,
-             const std::vector<float>& stereo_x_right, const std::vector<float>& depths,
+             keypoint_container  keypts, keypoint_container undist_keypts,
              unsigned int num_scale_levels, float scale_factor,
              bow_vocabulary* bow_vocab, bow_database* bow_db, map_database* map_db);
 
@@ -106,6 +104,8 @@ public:
      */
     Vec3_t get_translation() const;
 
+    int get_keypoint_id_from_bow_id(int bow_id);
+
     //-----------------------------------------
     // features and observations
 
@@ -135,10 +135,10 @@ public:
     void replace_landmark(landmark* lm, unsigned int idx);
 
     /**
-     * Get all of the landmarks
-     * (NOTE: including nullptr)
+     * Returns a map of keypoint_ids mapped to a landmark.
+     * The keypoint_ids are indicating the keypoint position in this frames undist_keypts.
      */
-    std::vector<landmark*> get_landmarks() const;
+    std::map<int, landmark*> get_landmarks() const;
 
     /**
      * Get the valid landmarks
@@ -234,9 +234,6 @@ public:
     //-----------------------------------------
     // constant observations
 
-    //! number of keypoints
-    const unsigned int num_keypts_;
-
     //! keypoints of monocular or stereo left image
     const keypoint_container keypts_;
     //! undistorted keypoints of monocular or stereo left image
@@ -244,11 +241,6 @@ public:
 
     //! keypoint indices in each of the cells
     const std::vector<std::vector<std::vector<unsigned int>>> keypt_indices_in_cells_;
-
-    //! disparities
-    const std::vector<float> stereo_x_right_;
-    //! depths
-    const std::vector<float> depths_;
 
     //! descriptors
 //    const cv::Mat descriptors_;
@@ -261,6 +253,12 @@ public:
     fbow::BoWVector bow_vec_;
     fbow::BoWFeatVector bow_feat_vec_;
 #endif
+
+    /**
+     * The bow_feat_vec contains a presentation of continuous ids, even though the keypoint ids are not. This
+     * vector represents a translation from the continuous ids to the actual keypoint ids.
+     */
+    std::vector<int> bow_vector_translation;
 
     //-----------------------------------------
     // covisibility graph
@@ -303,7 +301,7 @@ private:
     //! need mutex for access to observations
     mutable std::mutex mtx_observations_;
     //! observed landmarks
-    std::vector<landmark*> landmarks_;
+    std::map<int, landmark*> landmarks_;
 
     //-----------------------------------------
     // databases

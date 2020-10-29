@@ -11,15 +11,15 @@ namespace data {
 
 std::atomic<unsigned int> landmark::next_id_{0};
 
-landmark::landmark(const Vec3_t& pos_w, keyframe* ref_keyfrm, map_database* map_db)
-    : id_(next_id_++), first_keyfrm_id_(ref_keyfrm->id_), pos_w_(pos_w),
+landmark::landmark(const Vec3_t& pos_w, keyframe* ref_keyfrm, const int keypoint_id, map_database* map_db)
+    : id_(next_id_++), keypoint_id(keypoint_id), first_keyfrm_id_(ref_keyfrm->id_), pos_w_(pos_w),
       ref_keyfrm_(ref_keyfrm), map_db_(map_db) {}
 
-landmark::landmark(const unsigned int id, const unsigned int first_keyfrm_id,
+landmark::landmark(const unsigned int id, const unsigned int first_keyfrm_id, const int keypoint_id,
                    const Vec3_t& pos_w, keyframe* ref_keyfrm,
                    const unsigned int num_visible, const unsigned int num_found,
                    map_database* map_db)
-    : id_(id), first_keyfrm_id_(first_keyfrm_id), pos_w_(pos_w), ref_keyfrm_(ref_keyfrm),
+    : id_(id), keypoint_id(keypoint_id), first_keyfrm_id_(first_keyfrm_id), pos_w_(pos_w), ref_keyfrm_(ref_keyfrm),
       num_observable_(num_visible), num_observed_(num_found), map_db_(map_db) {}
 
 void landmark::set_pos_in_world(const Vec3_t& pos_w) {
@@ -42,6 +42,17 @@ keyframe* landmark::get_ref_keyframe() const {
     return ref_keyfrm_;
 }
 
+bool landmark::is_outlier() const {
+    return outlier;
+}
+void landmark::set_outlier(bool outlier) {
+    this->outlier = outlier;
+}
+
+const data::keypoint& landmark::get_initial_keypoint() {
+    return ref_keyfrm_->undist_keypts_.at(keypoint_id);
+}
+
 void landmark::add_observation(keyframe* keyfrm, unsigned int idx) {
     std::lock_guard<std::mutex> lock(mtx_observations_);
     if (observations_.count(keyfrm)) {
@@ -49,7 +60,7 @@ void landmark::add_observation(keyframe* keyfrm, unsigned int idx) {
     }
     observations_[keyfrm] = idx;
 
-    if (0 <= keyfrm->stereo_x_right_.at(idx)) {
+    if (0 <= keyfrm->undist_keypts_.at(idx).get_depth()) {
         num_observations_ += 2;
     }
     else {
@@ -64,7 +75,8 @@ void landmark::erase_observation(keyframe* keyfrm) {
 
         if (observations_.count(keyfrm)) {
             int idx = observations_.at(keyfrm);
-            if (0 <= keyfrm->stereo_x_right_.at(idx)) {
+            // TODO pali: This relies on indices
+            if (0 <= keyfrm->undist_keypts_.at(idx).get_depth()) {
                 num_observations_ -= 2;
             }
             else {
@@ -355,12 +367,17 @@ float landmark::get_observed_ratio() const {
     return static_cast<float>(num_observed_) / num_observable_;
 }
 
+// TODO pali: Obviously
 nlohmann::json landmark::to_json() const {
     return {{"1st_keyfrm", first_keyfrm_id_},
             {"pos_w", {pos_w_(0), pos_w_(1), pos_w_(2)}},
             {"ref_keyfrm", ref_keyfrm_->id_},
             {"n_vis", num_observable_},
             {"n_fnd", num_observed_}};
+}
+
+int landmark::get_id() {
+    return id_;
 }
 
 } // namespace data

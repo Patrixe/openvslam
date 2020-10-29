@@ -15,7 +15,7 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     //! Constructor
-    essential_solver(const eigen_alloc_vector<Vec3_t>& bearings_1, const eigen_alloc_vector<Vec3_t>& bearings_2,
+    essential_solver(const eigen_alloc_map<int, Vec3_t> &bearings_1, const eigen_alloc_map<int, Vec3_t> &bearings_2,
                      const std::vector<std::pair<int, int>>& matches_12);
 
     //! Destructor
@@ -59,9 +59,9 @@ private:
     float check_inliers(const Mat33_t& E_21, std::vector<bool>& is_inlier_match);
 
     //! bearing vectors of shot 1
-    const eigen_alloc_vector<Vec3_t>& bearings_1_;
+    const eigen_alloc_map<int, Vec3_t>& bearings_1_;
     //! bearing vectors of shot 2
-    const eigen_alloc_vector<Vec3_t>& bearings_2_;
+    const eigen_alloc_map<int, Vec3_t>& bearings_2_;
     //! matched indices between shots 1 and 2
     const std::vector<std::pair<int, int>>& matches_12_;
 

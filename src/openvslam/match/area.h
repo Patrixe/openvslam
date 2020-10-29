@@ -21,8 +21,8 @@ namespace openvslam {
             unsigned int match_in_consistent_area(data::frame &frm_2, std::map<int, cv::Point2f> &prev_matched_pts,
                                                   std::map<int, std::pair<data::keypoint, data::keypoint>> &found_matches,
                                                   int margin,
-                                                  const std::vector<data::keypoint> &frame_1_slam_cv_points,
-                                                  const std::vector<data::keypoint> &frame_2_slam_cv_points);
+                                                  const std::map<int, data::keypoint> &frame_1_slam_cv_points,
+                                                  const std::map<int, data::keypoint> &frame_2_slam_cv_points);
         };
 
     } // namespace match

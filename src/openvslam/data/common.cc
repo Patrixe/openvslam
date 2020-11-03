@@ -136,7 +136,6 @@ std::vector<std::reference_wrapper<data::keypoint const>> get_keypoints_in_cell(
                                                 const float ref_x, const float ref_y, const float margin,
                                                 const int min_level, const int max_level) {
     std::vector<std::reference_wrapper<data::keypoint const>> indices;
-    indices.reserve(undist_keypts.size());
 
     const int min_cell_idx_x = std::max(0, cvFloor((ref_x - camera->img_bounds_.min_x_ - margin) * camera->inv_cell_width_));
     if (static_cast<int>(camera->num_grid_cols_) <= min_cell_idx_x) {

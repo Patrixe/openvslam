@@ -150,6 +150,7 @@ namespace openvslam {
                                                                       init_slam_matches_, 100,
                                                                       init_frm_.undist_keypts_.get_slam_applicable_keypoints(),
                                                                       curr_frm.undist_keypts_.get_slam_applicable_keypoints());
+            spdlog::debug("Initializer: Attempting with {} matches", num_matches);
             // compute additional matches which are not used for slam algorithms
             matcher.match_in_consistent_area(curr_frm,
                                              prev_matched_slam_forbidden_coords_,
@@ -219,14 +220,14 @@ namespace openvslam {
             // assign 2D-3D associations of slam landmarks
             for (auto &match : init_slam_matches_) {
                 // remember the map -> id_frameA -> pair(pointA, pointB)
-                auto lm = new data::landmark(init_triangulated_slam_pts.at(match.first), curr_keyfrm, match.second.second.get_id(), map_db_);
+                auto lm = new data::landmark(init_triangulated_slam_pts.at(match.first), curr_keyfrm, map_db_);
                 configure_new_landmark(curr_frm, init_keyfrm, curr_keyfrm, match.first, match.second.second.get_id(), lm);
             }
 
             // assign 2D-3D associations of landmarks not suitable for slam
             for (auto &match : init_non_slam_matches_) {
                 // remember the map -> id_frameA -> pair(pointA, pointB)
-                auto lm = new data::landmark(init_triangulated_non_slam_pts.at(match.first), curr_keyfrm, match.second.second.get_id(), map_db_);
+                auto lm = new data::landmark(init_triangulated_non_slam_pts.at(match.first), curr_keyfrm, map_db_);
                 configure_new_landmark(curr_frm, init_keyfrm, curr_keyfrm, match.first, match.second.second.get_id(), lm);
             }
 
@@ -283,7 +284,7 @@ namespace openvslam {
             lm->update_normal_and_depth();
 
             // set the 2D-3D assocications to the current frame
-            curr_frm.landmarks_[lm->get_id()] = lm;
+            curr_frm.landmarks_[curr_idx] = lm;
 
             // add the landmark to the map DB
             map_db_->add_landmark(lm);
@@ -297,7 +298,7 @@ namespace openvslam {
 
             // scaling landmarks
             const auto landmarks = init_keyfrm->get_landmarks();
-            for (auto lm : landmarks) {
+            for (auto &lm : landmarks) {
                 lm.second->set_pos_in_world(lm.second->get_pos_in_world() * scale);
             }
         }
@@ -338,7 +339,7 @@ namespace openvslam {
 
                 // build a landmark
                 const Vec3_t pos_w = curr_frm.triangulate_stereo(idx);
-                auto lm = new data::landmark(pos_w, curr_keyfrm, idx, map_db_);
+                auto lm = new data::landmark(pos_w, curr_keyfrm, map_db_);
 
                 // set the associations to the new keyframe
                 lm->add_observation(curr_keyfrm, idx);

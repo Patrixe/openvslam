@@ -263,7 +263,7 @@ landmark* keyframe::get_landmark(const unsigned int idx) const {
     return landmarks_.at(idx);
 }
 
-const std::vector<std::reference_wrapper<const data::keypoint>> keyframe::get_keypoints_in_cell(const float ref_x,
+std::vector<std::reference_wrapper<const data::keypoint>> keyframe::get_keypoints_in_cell(const float ref_x,
                                                                                                 const float ref_y,
                                                                                                 const float margin) const {
     return data::get_keypoints_in_cell(camera_, undist_keypts_, keypt_indices_in_cells_, ref_x, ref_y, margin, -1,

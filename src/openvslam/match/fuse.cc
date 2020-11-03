@@ -114,6 +114,7 @@ unsigned int fuse::detect_duplication(data::keyframe* keyfrm, const Mat44_t& Sim
             // keyframeのbest_idxに対応する3次元点が存在しない
             // 観測情報を追加
             lm->add_observation(keyfrm, best_matching_keypoint.get().get_id());
+            // TODO pali: Wrong, this is inconsistent with the lms internal keypoint_id. Get rid of latter one
             keyfrm->add_landmark(lm, best_matching_keypoint.get().get_id());
         }
 

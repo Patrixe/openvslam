@@ -125,7 +125,7 @@ namespace openvslam {
             curr_frm_ = data::frame(img_gray_, timestamp, extractor_left_, bow_vocab_, camera_, cfg_->true_depth_thr_,
                                     mask);
         }
-
+        spdlog::debug("{} points in frame", curr_frm_.undist_keypts_.size());
         track();
 
         const auto end = std::chrono::system_clock::now();
@@ -194,7 +194,7 @@ namespace openvslam {
             curr_frm_ = data::segmentation_frame(img_gray_, seg_img, timestamp, extractor_left_,
                                                  bow_vocab_, camera_, cfg_->true_depth_thr_, mask);
         }
-
+        spdlog::debug("{} points in frame", curr_frm_.undist_keypts_.size());
         track();
 
         const auto end = std::chrono::system_clock::now();
@@ -296,6 +296,7 @@ namespace openvslam {
 
             // update the local map and optimize the camera pose of the current frame
             if (succeeded) {
+                spdlog::info("before updating local map, {} landmarks", this->curr_frm_.landmarks_.size());
                 update_local_map();
                 succeeded = optimize_current_frame_with_local_map();
             }

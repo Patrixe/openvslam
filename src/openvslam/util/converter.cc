@@ -4,7 +4,8 @@
 namespace openvslam {
 namespace util {
 
-std::vector<cv::Mat> converter::to_desc_vec(const data::keypoint_container points, std::vector<int> &bow_vector_indices_translation) {
+std::vector<cv::Mat> converter::to_desc_vec(const data::keypoint_container &points, std::vector<int> &bow_vector_indices_translation) {
+    bow_vector_indices_translation.clear();
     bow_vector_indices_translation.reserve(points.size());
 
     std::vector<cv::Mat> desc_vec;

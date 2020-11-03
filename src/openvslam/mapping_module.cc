@@ -274,8 +274,8 @@ void mapping_module::triangulate_with_two_keyframes(data::keyframe* keyfrm_1, da
         // succeeded
 
         // create a landmark object
-        // TODO pali: correct id?
-        auto lm = new data::landmark(pos_w, keyfrm_1, idx_1, map_db_);
+        // TODO pali: check if this landmark is required beyond drawing in viewer.cc
+        auto lm = new data::landmark(pos_w, keyfrm_1, map_db_);
 
         lm->add_observation(keyfrm_1, idx_1);
         lm->add_observation(keyfrm_2, idx_2);

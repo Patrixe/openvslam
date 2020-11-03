@@ -158,7 +158,7 @@ public:
     /**
      * Get the keypoint indices in the cell which reference point is located
      */
-    const std::vector<std::reference_wrapper<const data::keypoint>> get_keypoints_in_cell(float ref_x, float ref_y, float margin) const;
+    std::vector<std::reference_wrapper<const data::keypoint>> get_keypoints_in_cell(float ref_x, float ref_y, float margin) const;
 
     /**
      * Triangulate the keypoint using the disparity
@@ -300,7 +300,7 @@ private:
 
     //! need mutex for access to observations
     mutable std::mutex mtx_observations_;
-    //! observed landmarks
+    //! observed landmarks, key indicates keypoint_id
     std::map<int, landmark*> landmarks_;
 
     //-----------------------------------------

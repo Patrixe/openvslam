@@ -25,10 +25,10 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     //! constructor
-    landmark(const Vec3_t& pos_w, keyframe* ref_keyfrm, const int keypoint_id, map_database* map_db);
+    landmark(const Vec3_t& pos_w, keyframe* ref_keyfrm, map_database* map_db);
 
     //! constructor for map loading with computing parameters which can be recomputed
-    landmark(const unsigned int id, const unsigned int first_keyfrm_id, const int keypoint_id,
+    landmark(const unsigned int id, const unsigned int first_keyfrm_id,
              const Vec3_t& pos_w, keyframe* ref_keyfrm, unsigned int num_visible, unsigned int num_found,
              map_database* map_db);
 
@@ -104,13 +104,11 @@ public:
 
     bool is_outlier() const;
     void set_outlier(bool);
-    const keypoint &get_initial_keypoint();
 
     int get_id();
 
 public:
     unsigned int id_;
-    unsigned int keypoint_id;
     static std::atomic<unsigned int> next_id_;
     unsigned int first_keyfrm_id_ = 0;
     unsigned int num_observations_ = 0;

@@ -138,7 +138,7 @@ data::keyframe* keyframe_inserter::insert_new_keyframe(data::frame& curr_frm) {
 
         // idxに対応する3次元がなければstereo triangulationで作る
         const Vec3_t pos_w = curr_frm.triangulate_stereo(idx);
-        auto lm = new data::landmark(pos_w, keyfrm, idx, map_db_);
+        auto lm = new data::landmark(pos_w, keyfrm, map_db_);
 
         lm->add_observation(keyfrm, idx);
         keyfrm->add_landmark(lm, idx);

@@ -11,15 +11,15 @@ namespace data {
 
 std::atomic<unsigned int> landmark::next_id_{0};
 
-landmark::landmark(const Vec3_t& pos_w, keyframe* ref_keyfrm, const int keypoint_id, map_database* map_db)
-    : id_(next_id_++), keypoint_id(keypoint_id), first_keyfrm_id_(ref_keyfrm->id_), pos_w_(pos_w),
+landmark::landmark(const Vec3_t& pos_w, keyframe* ref_keyfrm, map_database* map_db)
+    : id_(next_id_++), first_keyfrm_id_(ref_keyfrm->id_), pos_w_(pos_w),
       ref_keyfrm_(ref_keyfrm), map_db_(map_db) {}
 
-landmark::landmark(const unsigned int id, const unsigned int first_keyfrm_id, const int keypoint_id,
+landmark::landmark(const unsigned int id, const unsigned int first_keyfrm_id,
                    const Vec3_t& pos_w, keyframe* ref_keyfrm,
                    const unsigned int num_visible, const unsigned int num_found,
                    map_database* map_db)
-    : id_(id), keypoint_id(keypoint_id), first_keyfrm_id_(first_keyfrm_id), pos_w_(pos_w), ref_keyfrm_(ref_keyfrm),
+    : id_(id), first_keyfrm_id_(first_keyfrm_id), pos_w_(pos_w), ref_keyfrm_(ref_keyfrm),
       num_observable_(num_visible), num_observed_(num_found), map_db_(map_db) {}
 
 void landmark::set_pos_in_world(const Vec3_t& pos_w) {
@@ -47,10 +47,6 @@ bool landmark::is_outlier() const {
 }
 void landmark::set_outlier(bool outlier) {
     this->outlier = outlier;
-}
-
-const data::keypoint& landmark::get_initial_keypoint() {
-    return ref_keyfrm_->undist_keypts_.at(keypoint_id);
 }
 
 void landmark::add_observation(keyframe* keyfrm, unsigned int idx) {

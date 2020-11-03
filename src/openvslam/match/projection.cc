@@ -1,3 +1,4 @@
+#include <spdlog/spdlog.h>
 #include "openvslam/camera/base.h"
 #include "openvslam/data/frame.h"
 #include "openvslam/data/keyframe.h"
@@ -42,7 +43,8 @@ unsigned int projection::match_frame_and_landmarks(data::frame& frm, const std::
         // TODO pali: Check if the logic in here is coherent with the split of points (and subsequently ids which are simply counted up)
         for (const auto neighbouring_keypoint_ref : keypoints_in_cell) {
             auto neighbouring_keypoint = neighbouring_keypoint_ref.get();
-            if (frm.landmarks_.at(neighbouring_keypoint.get_id()) && frm.landmarks_.at(neighbouring_keypoint.get_id())->has_observation()) {
+            if ((frm.landmarks_.find(neighbouring_keypoint.get_id()) != frm.landmarks_.end()) &&
+                frm.landmarks_.at(neighbouring_keypoint.get_id())->has_observation()) {
                 continue;
             }
 
@@ -78,7 +80,7 @@ unsigned int projection::match_frame_and_landmarks(data::frame& frm, const std::
             }
 
             // 対応情報を追加
-            frm.landmarks_.at(best_matching_keypoint.get().get_id()) = local_lm;
+            frm.landmarks_[best_matching_keypoint.get().get_id()] = local_lm;
             ++num_matches;
         }
     }
@@ -132,7 +134,8 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
         }
 
         // 隣接フレーム間では対応する特徴点のスケールは一定であると仮定し，探索範囲を設定
-        const auto last_scale_level = lm.second->get_initial_keypoint().get_cv_keypoint().octave;
+        const data::keypoint &keypoint_for_last_frame_landmark = last_frm.undist_keypts_.at(lm.first);
+        const auto last_scale_level = keypoint_for_last_frame_landmark.get_cv_keypoint().octave;
 
         // 3次元点を再投影した点が存在するcellの特徴点を取得
         std::vector<std::reference_wrapper<const data::keypoint>> keypoints_in_cell;
@@ -151,6 +154,9 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
                                                      margin * curr_frm.scale_factors_.at(last_scale_level),
                                                      last_scale_level - 1, last_scale_level + 1);
         }
+
+        spdlog::debug("ProjectionMatcher: {} candidates in cell", keypoints_in_cell.size());
+
         if (keypoints_in_cell.empty()) {
             continue;
         }
@@ -160,9 +166,10 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
         unsigned int best_hamm_dist = MAX_HAMMING_DIST;
         std::reference_wrapper<const data::keypoint> best_matching_keypoint = keypoints_in_cell[0];
 
-        for (const auto neighbouring_keypoint_ref : keypoints_in_cell) {
-            auto neighbouring_keypoint = neighbouring_keypoint_ref.get();
-            if (curr_frm.landmarks_.at(neighbouring_keypoint.get_id()) && curr_frm.landmarks_[neighbouring_keypoint.get_id()]->has_observation()) {
+        for (const auto &neighbouring_keypoint_ref : keypoints_in_cell) {
+            const auto &neighbouring_keypoint = neighbouring_keypoint_ref.get();
+            if ((curr_frm.landmarks_.find(neighbouring_keypoint.get_id()) != curr_frm.landmarks_.end()) &&
+                curr_frm.landmarks_[neighbouring_keypoint.get_id()]->has_observation()) {
                 continue;
             }
 
@@ -173,7 +180,6 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
                 }
             }
 
-            // TODO pali: check this. Just quick fixed for compilation
             const auto& desc = neighbouring_keypoint.get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
@@ -194,7 +200,7 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
 
         if (check_orientation_) {
             const auto delta_angle
-                = lm.second->get_initial_keypoint().get_cv_keypoint().angle - best_matching_keypoint.get().get_cv_keypoint().angle;
+                = keypoint_for_last_frame_landmark.get_cv_keypoint().angle - best_matching_keypoint.get().get_cv_keypoint().angle;
             angle_checker.append_delta_angle(delta_angle, best_matching_keypoint.get().get_id());
         }
     }
@@ -202,7 +208,7 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
     if (check_orientation_) {
         const auto invalid_matches = angle_checker.get_invalid_matches();
         for (const auto invalid_idx : invalid_matches) {
-            curr_frm.landmarks_.at(invalid_idx) = nullptr;
+            curr_frm.landmarks_.erase(invalid_idx);
             --num_matches;
         }
     }
@@ -274,8 +280,8 @@ unsigned int projection::match_frame_and_keyframe(data::frame& curr_frm, data::k
         std::reference_wrapper<const data::keypoint> best_matching_keypoint = keypoints_in_cell[0];
 
         for (const auto neighbouring_keypoint_ref : keypoints_in_cell) {
-            auto neighbouring_keypoint = neighbouring_keypoint_ref.get();
-            if (curr_frm.landmarks_.at(neighbouring_keypoint.get_id())) {
+            const auto &neighbouring_keypoint = neighbouring_keypoint_ref.get();
+            if (curr_frm.landmarks_.find(neighbouring_keypoint.get_id()) != curr_frm.landmarks_.end()) {
                 continue;
             }
 
@@ -295,7 +301,7 @@ unsigned int projection::match_frame_and_keyframe(data::frame& curr_frm, data::k
             continue;
         }
 
-        curr_frm.landmarks_.at(best_matching_keypoint.get().get_id()) = lm;
+        curr_frm.landmarks_[best_matching_keypoint.get().get_id()] = lm;
         num_matches++;
 
         if (check_orientation_) {
@@ -309,7 +315,7 @@ unsigned int projection::match_frame_and_keyframe(data::frame& curr_frm, data::k
         // TODO pali: In all methods, this is not correct anymore. Need to use point ids, not indices
         const auto invalid_matches = angle_checker.get_invalid_matches();
         for (const auto invalid_idx : invalid_matches) {
-            curr_frm.landmarks_.at(invalid_idx) = nullptr;
+            curr_frm.landmarks_.erase(invalid_idx);
             --num_matches;
         }
     }

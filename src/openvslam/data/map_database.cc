@@ -277,9 +277,10 @@ void map_database::register_landmark(const unsigned int id, const nlohmann::json
     const auto num_visible = json_landmark.at("n_vis").get<unsigned int>();
     const auto num_found = json_landmark.at("n_fnd").get<unsigned int>();
 
-    auto lm = new data::landmark(id, first_keyfrm_id, keypoint_id, pos_w, ref_keyfrm,
+    auto lm = new data::landmark(id, first_keyfrm_id, pos_w, ref_keyfrm,
                                  num_visible, num_found, this);
     assert(!landmarks_.count(id));
+    // TODO pali: Incorrect id
     landmarks_[lm->id_] = lm;
 }
 

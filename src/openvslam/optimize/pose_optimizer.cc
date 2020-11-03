@@ -16,6 +16,7 @@
 #include <g2o/solvers/eigen/linear_solver_eigen.h>
 #include <g2o/solvers/dense/linear_solver_dense.h>
 #include <g2o/core/optimization_algorithm_levenberg.h>
+#include <spdlog/spdlog.h>
 
 namespace openvslam {
 namespace optimize {
@@ -24,6 +25,7 @@ pose_optimizer::pose_optimizer(const unsigned int num_trials, const unsigned int
     : num_trials_(num_trials), num_each_iter_(num_each_iter) {}
 
 unsigned int pose_optimizer::optimize(data::frame& frm) const {
+    spdlog::debug("Running pose optimizer");
     // 1. optimizerを構築
 
     auto linear_solver = ::g2o::make_unique<::g2o::LinearSolverEigen<::g2o::BlockSolver_6_3::PoseMatrixType>>();
@@ -83,6 +85,7 @@ unsigned int pose_optimizer::optimize(data::frame& frm) const {
     }
 
     if (num_init_obs < 5) {
+        spdlog::debug("PoseOptimizer: Failed with too few initial observations: {} < 5", num_init_obs);
         return 0;
     }
 

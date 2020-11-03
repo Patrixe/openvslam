@@ -57,7 +57,7 @@ namespace openvslam {
             //! bearing vector
             Eigen::Vector3d bearing;
             // orb descriptor
-            std::shared_ptr<std::array<uchar, 32>> orb_descriptor;
+            std::shared_ptr<std::array<uchar, 32>> orb_descriptor{};
             float depth = 0;
             float stereo_x_offset = 0;
 

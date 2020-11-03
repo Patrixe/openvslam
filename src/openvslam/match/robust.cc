@@ -241,7 +241,7 @@ unsigned int robust::brute_force_match(data::frame& frm, data::keyframe* keyfrm,
         }
 
         // キーフレームのdescriptorを取得
-        const auto& keyframe_landmark_descriptor = keyframe_landmark.second->get_initial_keypoint().get_orb_descriptor_as_cv_mat();
+        const auto& keyframe_landmark_descriptor = keyfrm->undist_keypts_.at(keyframe_landmark.first).get_orb_descriptor_as_cv_mat();
 
         // 1番目と2番目に近いフレームのdescriptorを求める
         unsigned int best_hamm_dist = MAX_HAMMING_DIST;

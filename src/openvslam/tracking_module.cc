@@ -298,6 +298,7 @@ namespace openvslam {
             if (succeeded) {
                 spdlog::info("before updating local map, {} landmarks", this->curr_frm_.landmarks_.size());
                 update_local_map();
+                spdlog::info("after updating local map, {} landmarks", this->curr_frm_.landmarks_.size());
                 succeeded = optimize_current_frame_with_local_map();
             }
 
@@ -372,6 +373,7 @@ namespace openvslam {
     bool tracking_module::track_current_frame() {
         bool succeeded = false;
         if (tracking_state_ == tracker_state_t::Tracking) {
+            spdlog::debug("--Before tracking: {} landmarks in ref-keyframe", ref_keyfrm_->get_landmarks().size());
             // Tracking mode
             if (velocity_is_valid_ && last_reloc_frm_id_ + 2 < curr_frm_.id_) {
                 // if the motion model is valid
@@ -467,6 +469,7 @@ namespace openvslam {
     }
 
     void tracking_module::update_local_map() {
+        spdlog::debug("update local map: {} landmarks in ref-keyframe", curr_frm_.landmarks_.size());
         // clean landmark associations
         for (auto &lm : curr_frm_.landmarks_) {
             if (lm.second->will_be_erased()) {
@@ -474,6 +477,7 @@ namespace openvslam {
                 continue;
             }
         }
+        spdlog::debug("update local map: {} landmarks in ref-keyframe after erasing", curr_frm_.landmarks_.size());
 
         // acquire the current local map
         // This is not a global limit for the map size, but regulates how many frames (up to two levels) are connected to the current frame.
@@ -576,6 +580,7 @@ namespace openvslam {
     }
 
     void tracking_module::insert_new_keyframe() {
+        spdlog::info("Inserting keyframe with {} landmarks", curr_frm_.landmarks_.size());
         // insert the new keyframe
         const auto ref_keyfrm = keyfrm_inserter_.insert_new_keyframe(curr_frm_);
         // set the reference keyframe with the new keyframe

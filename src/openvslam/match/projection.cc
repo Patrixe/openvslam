@@ -155,7 +155,7 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
                                                      last_scale_level - 1, last_scale_level + 1);
         }
 
-        spdlog::debug("ProjectionMatcher: {} candidates in cell", keypoints_in_cell.size());
+//        spdlog::debug("ProjectionMatcher: {} candidates in cell", keypoints_in_cell.size());
 
         if (keypoints_in_cell.empty()) {
             continue;

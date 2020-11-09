@@ -19,11 +19,11 @@ two_view_triangulator::two_view_triangulator(data::keyframe* keyfrm_1, data::key
 bool two_view_triangulator::triangulate(const unsigned idx_1, const unsigned int idx_2, Vec3_t& pos_w) const {
     const auto& keypt_1 = keyfrm_1_->undist_keypts_.at(idx_1);
     const float keypt_1_x_right = keypt_1.get_stereo_x_offset();
-    const bool is_stereo_1 = 0 <= keypt_1_x_right;
+    const bool is_stereo_1 = 0 < keypt_1_x_right;
 
     const auto& keypt_2 = keyfrm_2_->undist_keypts_.at(idx_2);
     const float keypt_2_x_right = keypt_2.get_stereo_x_offset();
-    const bool is_stereo_2 = 0 <= keypt_2_x_right;
+    const bool is_stereo_2 = 0 < keypt_2_x_right;
 
     // rays with reference of each camera
     const Vec3_t ray_c_1 = keypt_1.get_bearing();
@@ -91,7 +91,7 @@ bool two_view_triangulator::triangulate(const unsigned idx_1, const unsigned int
 template<typename T>
 bool two_view_triangulator::check_reprojection_error(const Vec3_t& pos_w, const Mat33_t& rot_cw, const Vec3_t& trans_cw, camera::base* const camera,
                                                      const cv::Point_<T>& keypt, const float x_right, const float sigma_sq, const bool is_stereo) const {
-    assert(is_stereo ^ (x_right < 0));
+    assert(is_stereo ^ (x_right <= 0));
 
     // chi-squared values for p=5%
     // (n=2)

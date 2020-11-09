@@ -345,6 +345,9 @@ namespace openvslam {
 #pragma omp critical
 #endif
                         for (auto &keypt : keypts_in_cell) {
+                            if (keypt.response < 50) {
+                                continue;
+                            }
                             keypt.pt.x += j * cell_size;
                             keypt.pt.y += i * cell_size;
                             // Check if the keypoint is in the mask
@@ -685,7 +688,7 @@ namespace openvslam {
                 val |= COMPARE_ORB_POINTS(i * interval + 20) << 5;
                 val |= COMPARE_ORB_POINTS(i * interval + 24) << 6;
                 val |= COMPARE_ORB_POINTS(i * interval + 28) << 7;
-                keypt.get_orb_descriptor()->data()[i] = static_cast<uchar>(val);
+                keypt.get_orb_descriptor_pointer()[i] = static_cast<uchar>(val);
             }
 
 #undef GET_VALUE

@@ -20,6 +20,7 @@
 #include <g2o/solvers/dense/linear_solver_dense.h>
 #include <g2o/solvers/csparse/linear_solver_csparse.h>
 #include <g2o/core/optimization_algorithm_levenberg.h>
+#include <spdlog/spdlog.h>
 
 namespace openvslam {
 namespace optimize {
@@ -262,6 +263,7 @@ void local_bundle_adjuster::optimize(openvslam::data::keyframe* curr_keyfrm, boo
         std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
 
         if (!outlier_observations.empty()) {
+            spdlog::debug("local bundle adjuster: Removing {} observations", outlier_observations.size());
             for (auto& outlier_obs : outlier_observations) {
                 auto keyfrm = outlier_obs.first;
                 auto lm = outlier_obs.second;

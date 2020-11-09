@@ -8,15 +8,13 @@ namespace openvslam {
         int keypoint::id_counter = 0;
 
         keypoint::keypoint(cv::KeyPoint kPoint) : cvKeyPoint(std::move(kPoint)) {
-            orb_descriptor = std::make_shared<std::array<uchar, 32>>();
             // not thread safe
             point_id = id_counter++;
         };
 
         keypoint::keypoint() {
-            orb_descriptor = std::make_shared<std::array<uchar, 32>>();
-            // not thread sage
-            point_id = id_counter++;
+            // not thread safe
+//            point_id = id_counter++;
         }
 
         bool keypoint::is_applicable_for_slam() const {
@@ -43,18 +41,14 @@ namespace openvslam {
             this->bearing = bearing;
         }
 
-        std::shared_ptr<std::array<uchar, 32>> keypoint::get_orb_descriptor() {
-            return orb_descriptor;
-        }
-
-        void keypoint::set_orb_descriptor(std::shared_ptr<std::array<uchar, 32>> orbDescriptor) {
-            orb_descriptor = orbDescriptor;
+        uchar* keypoint::get_orb_descriptor_pointer() {
+            return orb_descriptor.ptr();
         }
 
         // TODO testen
         cv::Mat keypoint::get_orb_descriptor_as_cv_mat() const {
             // size is fixed in orb_extractor
-            return cv::Mat(1, 32, CV_8UC1, orb_descriptor.get());
+            return orb_descriptor;
         }
 
         int keypoint::get_id() const {

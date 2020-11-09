@@ -33,9 +33,7 @@ namespace openvslam {
 
             void set_bearing(const Eigen::Vector3d& bearing);
 
-            std::shared_ptr<std::array<uchar, 32>> get_orb_descriptor();
-
-            void set_orb_descriptor(std::shared_ptr<std::array<uchar, 32>> orbDescriptor);
+            uchar* get_orb_descriptor_pointer();
 
             // TODO testen
             cv::Mat get_orb_descriptor_as_cv_mat() const;
@@ -56,8 +54,7 @@ namespace openvslam {
             bool applicable_for_slam = true;
             //! bearing vector
             Eigen::Vector3d bearing;
-            // orb descriptor
-            std::shared_ptr<std::array<uchar, 32>> orb_descriptor{};
+            cv::Mat orb_descriptor = cv::Mat::zeros(1, 32, CV_8UC1);
             float depth = 0;
             float stereo_x_offset = 0;
 

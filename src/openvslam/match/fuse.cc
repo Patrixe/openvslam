@@ -195,7 +195,7 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const T& landmark
                 continue;
             }
 
-            if (keypt.get_stereo_x_offset() >= 0) {
+            if (keypt.get_stereo_x_offset() > 0) {
                 // stereo matchが存在する場合は自由度3の再投影誤差を計算する
                 const auto e_x = reproj(0) - keypt.get_cv_keypoint().pt.x;
                 const auto e_y = reproj(1) - keypt.get_cv_keypoint().pt.y;
@@ -236,8 +236,9 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const T& landmark
             continue;
         }
 
-        auto* lm_in_keyfrm = keyfrm->get_landmark(best_matching_keypoint.get().get_id());
-        if (lm_in_keyfrm) {
+        const std::map<int, data::landmark *> &keyframe_landmarks = keyfrm->get_landmarks();
+        if (keyframe_landmarks.find(best_matching_keypoint.get().get_id()) != keyframe_landmarks.end()) {
+            auto* lm_in_keyfrm = keyfrm->get_landmark(best_matching_keypoint.get().get_id());
             // keyframeのbest_idxに対応する3次元点が存在する -> 重複している場合
             if (!lm_in_keyfrm->will_be_erased()) {
                 // より信頼できる(=観測数が多い)3次元点で置き換える
@@ -319,12 +320,12 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const std::map<in
         }
 
         // descriptorが最も近い特徴点を探す
-        const auto lm_desc = lm.second->get_descriptor();
+        const auto &lm_desc = lm.second->get_descriptor();
 
         unsigned int best_dist = MAX_HAMMING_DIST;
         std::reference_wrapper<const data::keypoint> best_matching_keypoint = neighbouring_keypoints[0];
 
-        for (const auto neighbour_keypoint_ref : neighbouring_keypoints) {
+        for (const auto &neighbour_keypoint_ref : neighbouring_keypoints) {
             const auto& keypt = neighbour_keypoint_ref.get();
 
             const auto scale_level = static_cast<unsigned int>(keypt.get_cv_keypoint().octave);
@@ -334,7 +335,7 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const std::map<in
                 continue;
             }
 
-            if (keypt.get_stereo_x_offset() >= 0) {
+            if (keypt.get_stereo_x_offset() > 0) {
                 // stereo matchが存在する場合は自由度3の再投影誤差を計算する
                 const auto e_x = reproj(0) - keypt.get_cv_keypoint().pt.x;
                 const auto e_y = reproj(1) - keypt.get_cv_keypoint().pt.y;
@@ -375,8 +376,9 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const std::map<in
             continue;
         }
 
-        auto* lm_in_keyfrm = keyfrm->get_landmark(best_matching_keypoint.get().get_id());
-        if (lm_in_keyfrm) {
+        const std::map<int, data::landmark *> &keyframe_landmarks = keyfrm->get_landmarks();
+        if (keyframe_landmarks.find(best_matching_keypoint.get().get_id()) != keyframe_landmarks.end()) {
+            auto* lm_in_keyfrm = keyfrm->get_landmark(best_matching_keypoint.get().get_id());
             // keyframeのbest_idxに対応する3次元点が存在する -> 重複している場合
             if (!lm_in_keyfrm->will_be_erased()) {
                 // より信頼できる(=観測数が多い)3次元点で置き換える

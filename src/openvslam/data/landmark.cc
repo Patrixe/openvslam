@@ -71,7 +71,7 @@ void landmark::erase_observation(keyframe* keyfrm) {
 
         if (observations_.count(keyfrm)) {
             int idx = observations_.at(keyfrm);
-            // TODO pali: This relies on indices
+            // This seems to be okay
             if (0 <= keyfrm->undist_keypts_.at(idx).get_depth()) {
                 num_observations_ -= 2;
             }

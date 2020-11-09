@@ -1,3 +1,4 @@
+#include <spdlog/spdlog.h>
 #include "openvslam/data/keyframe.h"
 #include "openvslam/data/keypoint.h"
 #include "openvslam/data/landmark.h"
@@ -25,6 +26,7 @@ unsigned int local_map_cleaner::remove_redundant_landmarks(const unsigned int cu
 
     unsigned int num_removed = 0;
     auto iter = fresh_landmarks_.begin();
+    int counter = 0;
     while (iter != fresh_landmarks_.end()) {
         auto lm = *iter;
 
@@ -60,12 +62,15 @@ unsigned int local_map_cleaner::remove_redundant_landmarks(const unsigned int cu
             ++num_removed;
             lm->prepare_for_erasing();
             iter = fresh_landmarks_.erase(iter);
+            counter++;
         }
         else {
             // hold decision because the state is NotClear
             iter++;
         }
     }
+
+    spdlog::debug("local map cleaner removed {} landmarks", counter);
 
     return num_removed;
 }

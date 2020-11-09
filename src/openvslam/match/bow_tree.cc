@@ -21,7 +21,7 @@ unsigned int bow_tree::match_frame_and_keyframe(data::keyframe* keyfrm, data::fr
 
     angle_checker<int> angle_checker;
 
-    const auto keyframe_landmarks = keyfrm->get_landmarks();
+    const auto &keyframe_landmarks = keyfrm->get_landmarks();
 
 #ifdef USE_DBOW2
     DBoW2::FeatureVector::const_iterator keyframe_feature_itr = keyfrm->bow_feat_vec_.begin();
@@ -139,8 +139,8 @@ unsigned int bow_tree::match_keyframes(data::keyframe* keyfrm_1, data::keyframe*
 
     angle_checker<int> angle_checker;
 
-    const auto keyfrm_1_lms = keyfrm_1->get_landmarks();
-    const auto keyfrm_2_lms = keyfrm_2->get_landmarks();
+    const auto &keyfrm_1_lms = keyfrm_1->get_landmarks();
+    const auto &keyfrm_2_lms = keyfrm_2->get_landmarks();
 
     // keyframe2の特徴点のうち，keyfram1の特徴点と対応が取れているものはtrueにする
     // NOTE: sizeはkeyframe2の特徴点に一致

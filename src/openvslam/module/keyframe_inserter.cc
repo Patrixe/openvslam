@@ -95,6 +95,7 @@ data::keyframe* keyframe_inserter::insert_new_keyframe(data::frame& curr_frm) {
         return keyfrm;
     }
 
+    // TODO pali: Stereo does not work here
     // 有効なdepthとそのindexを格納する
     std::vector<std::pair<float, unsigned int>> depth_idx_pairs;
     depth_idx_pairs.reserve(curr_frm.undist_keypts_.size());

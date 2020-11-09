@@ -76,7 +76,7 @@ unsigned int robust::match_for_triangulation(data::keyframe* keyfrm_1, data::key
                 // stereo keypointかどうかをチェックする
                 // else compare the bearing with each point of the second keyframe, compute hamming distance to
                 // determine whether two points can be matched.
-                const bool is_stereo_keypt_1 = 0 <= keypoint_frame1.get_stereo_x_offset();
+                const bool is_stereo_keypt_1 = 0 < keypoint_frame1.get_stereo_x_offset();
 
                 // 特徴点・特徴量を取得
                 const Vec3_t& bearing_1 = keypoint_frame1.get_bearing();
@@ -99,7 +99,7 @@ unsigned int robust::match_for_triangulation(data::keyframe* keyfrm_1, data::key
 
                     // stereo keypointかどうかをチェックする
                     const data::keypoint &keypoint_frame2 = keyfrm_2->undist_keypts_.at(keyfrm_2->get_keypoint_id_from_bow_id(bow_idx_2));
-                    const bool is_stereo_keypt_2 = 0 <= keypoint_frame2.get_stereo_x_offset();
+                    const bool is_stereo_keypt_2 = 0 < keypoint_frame2.get_stereo_x_offset();
 
                     // 特徴点・特徴量を取得
                     const Vec3_t& bearing_2 = keypoint_frame2.get_bearing();

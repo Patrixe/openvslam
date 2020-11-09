@@ -141,7 +141,8 @@ void mapping_module::mapping_with_new_keyframe() {
     store_new_keyframe();
 
     // remove redundant landmarks
-    local_map_cleaner_->remove_redundant_landmarks(cur_keyfrm_->id_);
+    int removed_landmarks = local_map_cleaner_->remove_redundant_landmarks(cur_keyfrm_->id_);
+    spdlog::debug("MM: removed {} landmarks from current keyframe", removed_landmarks);
 
     // triangulate new landmarks between the current frame and each of the covisibilities
     create_new_landmarks();
@@ -171,7 +172,7 @@ void mapping_module::store_new_keyframe() {
 
     // update graph
     const auto cur_lms = cur_keyfrm_->get_landmarks();
-    for (const auto lm : cur_lms) {
+    for (const auto &lm : cur_lms) {
         if (lm.second->will_be_erased()) {
             continue;
         }
@@ -199,9 +200,11 @@ void mapping_module::store_new_keyframe() {
 void mapping_module::create_new_landmarks() {
     // get the covisibilities of `cur_keyfrm_`
     // in order to triangulate landmarks between `cur_keyfrm_` and each of the covisibilities
+    spdlog::info("--------------");
+    spdlog::info("MM: Before creating new landmarks in mapping module, cur_keyfrm has {} landmarks", cur_keyfrm_->get_landmarks().size());
     constexpr unsigned int num_covisibilities = 10;
     const auto cur_covisibilities = cur_keyfrm_->graph_node_->get_top_n_covisibilities(num_covisibilities * (is_monocular_ ? 2 : 1));
-
+    spdlog::info("MM: Cur covisibielities: {}", cur_covisibilities.size());
     // lowe's_ratio will not be used
     match::robust robust_matcher(0.0, false);
 
@@ -211,6 +214,7 @@ void mapping_module::create_new_landmarks() {
     for (unsigned int i = 0; i < cur_covisibilities.size(); ++i) {
         // if any keyframe is queued, abort the triangulation
         if (1 < i && keyframe_is_queued()) {
+            spdlog::info("MM: Skip because of queue");
             return;
         }
 
@@ -227,6 +231,7 @@ void mapping_module::create_new_landmarks() {
             // if the scene scale is much smaller than the baseline, abort the triangulation
             const float median_depth_in_ngh = ngh_keyfrm->compute_median_depth(true);
             if (baseline_dist < 0.02 * median_depth_in_ngh) {
+                spdlog::info("MM: Skip because of median depth");
                 continue;
             }
         }
@@ -248,10 +253,13 @@ void mapping_module::create_new_landmarks() {
         // vector of matches (idx in the current, idx in the neighbor)
         std::vector<std::pair<unsigned int, unsigned int>> matches;
         robust_matcher.match_for_triangulation(cur_keyfrm_, ngh_keyfrm, E_ngh_to_cur, matches);
+        spdlog::info("MM: Robust matcher found {} matches", matches.size());
 
         // triangulation
         triangulate_with_two_keyframes(cur_keyfrm_, ngh_keyfrm, matches);
+        spdlog::info("MM: landmarks after triangulation: {}", cur_keyfrm_->get_landmarks().size());
     }
+    spdlog::info("MM: After creating new landmarks in mapping module, cur_keyfrm has {} landmarks", cur_keyfrm_->get_landmarks().size());
 }
 
 void mapping_module::triangulate_with_two_keyframes(data::keyframe* keyfrm_1, data::keyframe* keyfrm_2,
@@ -274,7 +282,6 @@ void mapping_module::triangulate_with_two_keyframes(data::keyframe* keyfrm_1, da
         // succeeded
 
         // create a landmark object
-        // TODO pali: check if this landmark is required beyond drawing in viewer.cc
         auto lm = new data::landmark(pos_w, keyfrm_1, map_db_);
 
         lm->add_observation(keyfrm_1, idx_1);
@@ -305,8 +312,8 @@ void mapping_module::update_new_keyframe() {
     fuse_landmark_duplication(fuse_tgt_keyfrms);
 
     // update the geometries
-    const auto cur_landmarks = cur_keyfrm_->get_landmarks();
-    for (const auto lm : cur_landmarks) {
+    const auto &cur_landmarks = cur_keyfrm_->get_landmarks();
+    for (const auto &lm : cur_landmarks) {
         if (lm.second->will_be_erased()) {
             continue;
         }
@@ -363,8 +370,8 @@ void mapping_module::fuse_landmark_duplication(const std::unordered_set<data::ke
         // - additional matches
         // - duplication of matches
         // then, add matches and solve duplication
-        auto cur_landmarks = cur_keyfrm_->get_landmarks();
-        for (const auto fuse_tgt_keyfrm : fuse_tgt_keyfrms) {
+        const auto &cur_landmarks = cur_keyfrm_->get_landmarks();
+        for (const auto &fuse_tgt_keyfrm : fuse_tgt_keyfrms) {
             matcher.replace_duplication(fuse_tgt_keyfrm, cur_landmarks);
         }
     }
@@ -377,8 +384,8 @@ void mapping_module::fuse_landmark_duplication(const std::unordered_set<data::ke
         std::unordered_set<data::landmark*> candidate_landmarks_to_fuse;
         candidate_landmarks_to_fuse.reserve(fuse_tgt_keyfrms.size() * cur_keyfrm_->undist_keypts_.size());
 
-        for (const auto fuse_tgt_keyfrm : fuse_tgt_keyfrms) {
-            const auto fuse_tgt_landmarks = fuse_tgt_keyfrm->get_landmarks();
+        for (const auto &fuse_tgt_keyfrm : fuse_tgt_keyfrms) {
+            const auto &fuse_tgt_landmarks = fuse_tgt_keyfrm->get_landmarks();
 
             for (const auto &lm : fuse_tgt_landmarks) {
                 if (lm.second->will_be_erased()) {

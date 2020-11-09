@@ -13,6 +13,7 @@
 
 #include <nlohmann/json.hpp>
 #include <utility>
+#include <spdlog/spdlog.h>
 
 namespace openvslam {
 namespace data {
@@ -191,22 +192,29 @@ void keyframe::compute_bow() {
 
 void keyframe::add_landmark(landmark* lm, const unsigned int idx) {
     std::lock_guard<std::mutex> lock(mtx_observations_);
+    if (!lm) {
+        spdlog::info("Warning: Adding null as a landmark");
+    }
     landmarks_[idx] = lm;
 }
 
 void keyframe::erase_landmark_with_index(const unsigned int idx) {
     std::lock_guard<std::mutex> lock(mtx_observations_);
-    landmarks_.at(idx) = nullptr;
+//    landmarks_.at(idx) = nullptr;
+    landmarks_.erase(idx);
 }
 
 void keyframe::erase_landmark(landmark* lm) {
     int idx = lm->get_index_in_keyframe(this);
     if (0 <= idx) {
-        landmarks_.at(static_cast<unsigned int>(idx)) = nullptr;
+        landmarks_.erase(idx);
     }
 }
 
 void keyframe::replace_landmark(landmark* lm, const unsigned int idx) {
+    if (!lm) {
+        spdlog::info("Warning: Replacing a landmark with null");
+    }
     landmarks_.at(idx) = lm;
 }
 
@@ -332,7 +340,7 @@ float keyframe::compute_median_depth(const bool abs) const {
     const Vec3_t rot_cw_z_row = cam_pose_cw.block<1, 3>(2, 0);
     const float trans_cw_z = cam_pose_cw(2, 3);
 
-    for (const auto lm : landmarks_) {
+    for (const auto &lm : landmarks_) {
         const Vec3_t pos_w = lm.second->get_pos_in_world();
         const auto pos_c_z = rot_cw_z_row.dot(pos_w) + trans_cw_z;
         depths.push_back(abs ? std::abs(pos_c_z) : pos_c_z);
@@ -393,6 +401,16 @@ void keyframe::prepare_for_erasing() {
 
 bool keyframe::will_be_erased() {
     return will_be_erased_;
+}
+
+bool keyframe::has_null_landmarks() {
+    for (auto &lm_pair : landmarks_) {
+        if (lm_pair.second == NULL) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 } // namespace data

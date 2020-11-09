@@ -69,8 +69,9 @@ bool frame_tracker::bow_match_based_track(data::frame& curr_frm, const data::fra
 
     // keyframeとframeで2D対応を探して，frameの特徴点とkeyframeで観測している3次元点の対応を得る
     std::map<int, data::landmark*> matched_lms_in_curr;
+    spdlog::debug("bow matched based tracking: Ref-Keyframe has {} landmarks", ref_keyfrm->get_landmarks().size());
     auto num_matches = bow_matcher.match_frame_and_keyframe(ref_keyfrm, curr_frm, matched_lms_in_curr);
-    spdlog::debug("BowMatcher: Found {} ({}) matches", matched_lms_in_curr.size(), num_matches);
+    spdlog::debug("bow matched based tracking: Found {} ({}) matches", matched_lms_in_curr.size(), num_matches);
     if (num_matches < num_matches_thr_) {
         spdlog::debug("bow match based tracking failed: {} matches < {}", num_matches, num_matches_thr_);
         return false;
@@ -82,7 +83,7 @@ bool frame_tracker::bow_match_based_track(data::frame& curr_frm, const data::fra
     // pose optimization
     // 初期値は前のフレームの姿勢
     curr_frm.set_cam_pose(last_frm.cam_pose_cw_);
-    spdlog::debug("BowMatcher: Pose optimizing");
+    spdlog::debug("bow matched based tracking: Pose optimizing");
     pose_optimizer_.optimize(curr_frm);
 
     // outlierを除く

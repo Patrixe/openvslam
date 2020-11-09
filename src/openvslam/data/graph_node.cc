@@ -56,10 +56,10 @@ void graph_node::erase_all_connections() {
 }
 
 void graph_node::update_connections() {
-    const auto landmarks = owner_keyfrm_->get_landmarks();
+    const auto &landmarks = owner_keyfrm_->get_landmarks();
 
     std::map<keyframe*, unsigned int> keyfrm_weights;
-    for (const auto lm : landmarks) {
+    for (const auto &lm : landmarks) {
         if (lm.second->will_be_erased()) {
             continue;
         }

@@ -148,7 +148,8 @@ void frame_publisher::draw_info_text(cv::Mat& img, const tracker_state_t trackin
         }
         case tracker_state_t::Initializing: {
             ss << "INITIALIZE | ";
-            ss << "KP: " << num_tracked << ", ";
+            ss << "KP: " << curr_keypts_.size() << ", ";
+            ss << "TKP: " << num_tracked << ", ";
             ss << "track time: " << std::fixed << std::setprecision(0) << elapsed_ms << "ms";
             break;
         }
@@ -156,7 +157,8 @@ void frame_publisher::draw_info_text(cv::Mat& img, const tracker_state_t trackin
             ss << (mapping_is_enabled ? "MAPPING | " : "LOCALIZATION | ");
             ss << "KF: " << map_db_->get_num_keyframes() << ", ";
             ss << "LM: " << map_db_->get_num_landmarks() << ", ";
-            ss << "KP: " << num_tracked << ", ";
+            ss << "TLM: " << is_tracked_.size() << ", ";
+            ss << "KP: " << curr_keypts_.size() << ", ";
             ss << "track time: " << std::fixed << std::setprecision(0) << elapsed_ms << "ms";
             break;
         }

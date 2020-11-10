@@ -19,13 +19,13 @@ namespace openvslam {
             found_matches.clear();
 
             angle_checker<int> angle_checker;
-            std::map<int, unsigned int> matched_dists_in_frm_2;
-            for (auto point : frame_2_slam_cv_points) {
-                matched_dists_in_frm_2.insert(std::pair<int, unsigned int>(point.first, MAX_HAMMING_DIST));
+            std::map<int, unsigned int> best_distance_of_frame_2_keypoint;
+            for (auto &point : frame_2_slam_cv_points) {
+                best_distance_of_frame_2_keypoint.insert(std::pair<int, unsigned int>(point.first, MAX_HAMMING_DIST));
             }
 
             std::map<int, int> matched_indices_1_in_frm_2;
-            for (auto point : frame_2_slam_cv_points) {
+            for (auto &point : frame_2_slam_cv_points) {
                 matched_indices_1_in_frm_2.insert(std::pair<int, int>(point.first, -1));
             }
 
@@ -40,6 +40,7 @@ namespace openvslam {
                 // 一つ前にマッチングした特徴点周辺のcellの特徴点を持ってくる
                 // if the initialization process takes more than two frames, this is used to "track" the movement of a
                 // point from the initial frame to the frame thats processed now. The gap between the correct matches would otherwise increase every frame.
+                // CAVEAT: This result may contain features different from the given feature set (as no slam-applicable filtering is done)
                 std::vector<std::reference_wrapper<const data::keypoint>> neighbouring_keypoints = frm_2.get_keypoints_in_cell(
                         prev_matched_pts.at(frame_a_point.first).x, prev_matched_pts.at(frame_a_point.first).y,
                         margin, scale_level_1, scale_level_1);
@@ -55,16 +56,19 @@ namespace openvslam {
                 std::reference_wrapper<const data::keypoint> best_matching_keypoint_of_frame_b = neighbouring_keypoints[0];
 
                 for (std::reference_wrapper<const data::keypoint> frame_b_point_to_be_checked : neighbouring_keypoints) {
-                    if (!frame_b_point_to_be_checked.get().is_applicable_for_slam()) {
-                        continue;
-                    }
-
                     const auto &desc_2 = frame_b_point_to_be_checked.get().get_orb_descriptor_as_cv_mat();
                     const auto hamm_dist = compute_descriptor_distance_32(frame_a_point_descriptor, desc_2);
 
                     // すでにマッチした点のほうが近ければスルーする
-                    // check whether this point of frame 2 has a lower distance to another point from a previous iteration
-                    if (matched_dists_in_frm_2.at(frame_b_point_to_be_checked.get().get_id()) <= hamm_dist) {
+                    // check if this point is actually applicable for slam
+                    if (best_distance_of_frame_2_keypoint.find(frame_b_point_to_be_checked.get().get_id()) != best_distance_of_frame_2_keypoint.end()) {
+                        // check whether this point of frame 2 has a lower distance to another point from a previous iteration
+                        if (best_distance_of_frame_2_keypoint.at(frame_b_point_to_be_checked.get().get_id()) <=
+                            hamm_dist) {
+                            continue;
+                        }
+                    } else {
+                        // this point was not found in the initial set of points, so we assume its not applicable for the given set
                         continue;
                     }
 
@@ -102,7 +106,7 @@ namespace openvslam {
                         std::pair<data::keypoint, data::keypoint>(frame_a_point.second, best_matching_keypoint_of_frame_b.get()))
                 );
                 matched_indices_1_in_frm_2.at(best_matching_keypoint_of_frame_b.get().get_id()) = frame_a_point.first;
-                matched_dists_in_frm_2.at(best_matching_keypoint_of_frame_b.get().get_id()) = best_hamm_dist;
+                best_distance_of_frame_2_keypoint.at(best_matching_keypoint_of_frame_b.get().get_id()) = best_hamm_dist;
 
                 if (check_orientation_) {
                     const auto delta_angle = frame_a_point.second.get_cv_keypoint().angle

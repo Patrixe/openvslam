@@ -33,7 +33,7 @@ public:
      * Check the new keyframe is needed or not
      */
     bool new_keyframe_is_needed(const data::frame& curr_frm, const unsigned int num_tracked_lms,
-                                const data::keyframe& ref_keyfrm) const;
+                                data::keyframe& ref_keyfrm) const;
 
     /**
      * Insert the new keyframe derived from the current frame
@@ -66,6 +66,8 @@ private:
 
     //! frame ID of the last keyframe
     unsigned int frm_id_of_last_keyfrm_ = 0;
+
+    float getSharedFrameLandmarkRatio(const data::frame &current_frame, data::keyframe &ref_keyframe) const;
 };
 
 } // namespace module

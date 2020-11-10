@@ -23,7 +23,7 @@ void keyframe_inserter::reset() {
 }
 
 bool keyframe_inserter::new_keyframe_is_needed(const data::frame& curr_frm, const unsigned int num_tracked_lms,
-                                               const data::keyframe& ref_keyfrm) const {
+                                               data::keyframe& ref_keyfrm) const {
     assert(mapper_);
     // mapping moduleが停止しているときはキーフレームが追加できない
     if (mapper_->is_paused() || mapper_->pause_is_requested()) {
@@ -34,7 +34,7 @@ bool keyframe_inserter::new_keyframe_is_needed(const data::frame& curr_frm, cons
 
     // reference keyframeで観測している3次元点のうち，3視点以上から観測されている3次元点の数を数える
     const unsigned int min_obs_thr = (3 <= num_keyfrms) ? 3 : 2;
-    const auto num_reliable_lms = ref_keyfrm.get_num_tracked_landmarks(min_obs_thr);
+    const auto num_reliable_keyframe_lms = ref_keyfrm.get_num_tracked_landmarks(min_obs_thr);
 
     // mappingが処理中かどうか
     const bool mapper_is_idle = mapper_->get_keyframe_acceptability();
@@ -48,10 +48,11 @@ bool keyframe_inserter::new_keyframe_is_needed(const data::frame& curr_frm, cons
     // 条件A2: min_num_frames_以上経過していて,mapping moduleが待機状態であればキーフレームを追加する
     const bool cond_a2 = (frm_id_of_last_keyfrm_ + min_num_frms_ <= curr_frm.id_) && mapper_is_idle;
     // 条件A3: 前回のキーフレームから視点が移動してたらキーフレームを追加する
-    const bool cond_a3 = num_tracked_lms < num_reliable_lms * 0.25;
+    const bool cond_a3 = num_tracked_lms < num_reliable_keyframe_lms * 0.25;
 
     // 条件B: (キーフレーム追加の必要条件)3次元点が閾値以上観測されていて，3次元点との割合が一定割合以下であればキーフレームを追加する
-    const bool cond_b = (num_tracked_lms_thr <= num_tracked_lms) && (num_tracked_lms < num_reliable_lms * lms_ratio_thr);
+    // more landmarks than threshold and more less than 90% of the keyframe landmark count
+    const bool cond_b = (num_tracked_lms_thr <= num_tracked_lms) && (num_tracked_lms < num_reliable_keyframe_lms * lms_ratio_thr);
 
     // Bが満たされていなければ追加しない
     if (!cond_b) {
@@ -63,10 +64,16 @@ bool keyframe_inserter::new_keyframe_is_needed(const data::frame& curr_frm, cons
         return false;
     }
 
+    // deactivated due to attempts to inline mapping module
     if (mapper_is_idle) {
         // mapping moduleが処理中でなければ，とりあえずkeyframeを追加しておく
         return true;
     }
+
+//    float landmark_ratio = curr_frm.landmarks_.size() / (float) ref_keyfrm.get_landmarks().size();
+//    if (landmark_ratio < 0.3) {
+//        return true;
+//    }
 
     // mapping moduleが処理中だったら，local BAを止めてキーフレームを追加する
     if (setup_type_ != camera::setup_type_t::Monocular
@@ -76,6 +83,17 @@ bool keyframe_inserter::new_keyframe_is_needed(const data::frame& curr_frm, cons
     }
 
     return false;
+}
+
+float keyframe_inserter::getSharedFrameLandmarkRatio(const data::frame &current_frame, data::keyframe &ref_keyframe) const {
+    int shared_landmarks = 0;
+    for (const auto &frame_landmark : current_frame.landmarks_) {
+        if (frame_landmark.second->is_observed_in_keyframe(&ref_keyframe)) {
+            ++shared_landmarks;
+        }
+    }
+
+    return shared_landmarks / current_frame.landmarks_.size();
 }
 
 data::keyframe* keyframe_inserter::insert_new_keyframe(data::frame& curr_frm) {

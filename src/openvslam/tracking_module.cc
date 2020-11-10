@@ -125,7 +125,6 @@ namespace openvslam {
             curr_frm_ = data::frame(img_gray_, timestamp, extractor_left_, bow_vocab_, camera_, cfg_->true_depth_thr_,
                                     mask);
         }
-        spdlog::debug("{} points in frame", curr_frm_.undist_keypts_.size());
         track();
 
         const auto end = std::chrono::system_clock::now();
@@ -251,7 +250,7 @@ namespace openvslam {
     }
 
     void tracking_module::track() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
         if (tracking_state_ == tracker_state_t::NotInitialized) {
             tracking_state_ = tracker_state_t::Initializing;
         }
@@ -377,9 +376,6 @@ namespace openvslam {
         bool succeeded = false;
         if (tracking_state_ == tracker_state_t::Tracking) {
             spdlog::debug("--Before tracking: {} landmarks in ref-keyframe", ref_keyfrm_->get_landmarks().size());
-            spdlog::debug("--Before tracking: {} landmarks in ref-keyframe are invalid", ref_keyfrm_->get_number_of_invalid_landmarks());
-            spdlog::debug("--Before tracking: {} landmarks in current frame are invalid", curr_frm_.get_number_of_invalid_landmarks());
-            spdlog::debug("--Before tracking: {} landmarks in last frame are invalid", last_frm_.get_number_of_invalid_landmarks());
             // Tracking mode
             if (velocity_is_valid_ && last_reloc_frm_id_ + 2 < curr_frm_.id_) {
                 // if the motion model is valid

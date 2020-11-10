@@ -184,9 +184,9 @@ namespace openvslam {
                 // make invalid the matchings which have not been triangulated
                 filter_not_triangulated(is_triangulated, init_slam_matches_);
 
-
                 // triangulation of points not used for initialization, but still necessary to provide a correct position
                 init_triangulated_non_slam_pts = triangulate_non_slam_points();
+
 
                 // set the camera poses
                 init_frm_.set_cam_pose(Mat44_t::Identity());
@@ -227,6 +227,11 @@ namespace openvslam {
             // assign 2D-3D associations of landmarks not suitable for slam
             for (auto &match : init_non_slam_matches_) {
                 // remember the map -> id_frameA -> pair(pointA, pointB)
+                // we have no filter matrix for the non-slam points
+                if (init_triangulated_non_slam_pts.find(match.first) == init_triangulated_non_slam_pts.end()) {
+                    continue;
+                }
+                
                 auto lm = new data::landmark(init_triangulated_non_slam_pts.at(match.first), curr_keyfrm, map_db_);
                 configure_new_landmark(curr_frm, init_keyfrm, curr_keyfrm, match.first, match.second.second.get_id(), lm);
             }

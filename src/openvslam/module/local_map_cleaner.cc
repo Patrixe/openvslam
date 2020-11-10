@@ -84,8 +84,8 @@ unsigned int local_map_cleaner::remove_redundant_keyframes(data::keyframe* cur_k
 
     unsigned int num_removed = 0;
     // check redundancy for each of the covisibilities
-    const auto cur_covisibilities = cur_keyfrm->graph_node_->get_covisibilities();
-    for (const auto covisibility : cur_covisibilities) {
+    const auto &cur_covisibilities = cur_keyfrm->graph_node_->get_covisibilities();
+    for (const auto &covisibility : cur_covisibilities) {
         // cannot remove the origin
         if (covisibility->id_ == origin_keyfrm_id_) {
             continue;
@@ -121,13 +121,13 @@ void local_map_cleaner::count_redundant_observations(data::keyframe* keyfrm, uns
     num_redundant_obs = 0;
 
     const auto landmarks = keyfrm->get_landmarks();
-    for (auto lm : landmarks) {
+    for (auto &lm : landmarks) {
         if (lm.second->will_be_erased()) {
             continue;
         }
 
         // if depth is within the valid range, it won't be considered
-        const auto depth = keyfrm->undist_keypts_.at(lm.second->get_index_in_keyframe(keyfrm)).get_depth();
+        const auto depth = keyfrm->undist_keypts_.at(lm.first).get_depth();
         if (!is_monocular_ && (depth < 0.0 || keyfrm->depth_thr_ < depth)) {
             continue;
         }
@@ -140,7 +140,7 @@ void local_map_cleaner::count_redundant_observations(data::keyframe* keyfrm, uns
         }
 
         // `keyfrm` observes `lm` with the scale level `scale_level`
-        const auto scale_level = keyfrm->undist_keypts_.at(lm.second->get_index_in_keyframe(keyfrm)).get_cv_keypoint().octave;
+        const auto scale_level = keyfrm->undist_keypts_.at(lm.first).get_cv_keypoint().octave;
         // get observers of `lm`
         const auto observations = lm.second->get_observations();
 
@@ -149,7 +149,7 @@ void local_map_cleaner::count_redundant_observations(data::keyframe* keyfrm, uns
         // the number of the keyframes that observe `lm` with the more reliable (closer) scale
         unsigned int num_better_obs = 0;
 
-        for (const auto obs : observations) {
+        for (const auto &obs : observations) {
             const auto ngh_keyfrm = obs.first;
             if (*ngh_keyfrm == *keyfrm) {
                 continue;

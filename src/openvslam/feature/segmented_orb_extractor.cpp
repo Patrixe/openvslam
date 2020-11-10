@@ -315,9 +315,13 @@ namespace openvslam {
                                                                         const cv::Mat &segmentation_information,
                                                                         float scale_factor, int offset_x, int offset_y) {
             for (auto &keypoint : keypts_in_cell) {
-                if (!this->seg_cfg->allowed_for_landmark(
-                        segmentation_information.at<uchar>((keypoint.second.get_cv_keypoint().pt.y + offset_y) * scale_factor,
-                                                           (keypoint.second.get_cv_keypoint().pt.x + offset_x) * scale_factor))) {
+                const auto &seg_class = segmentation_information.at<uchar>(
+                        (keypoint.second.get_cv_keypoint().pt.y + offset_y) * scale_factor,
+                        (keypoint.second.get_cv_keypoint().pt.x + offset_x) * scale_factor);
+
+                keypoint.second.set_segmentation_class(seg_class);
+
+                if (!this->seg_cfg->allowed_for_landmark(seg_class)) {
                     keypoint.second.set_applicable_for_slam(false);
                 }
             }

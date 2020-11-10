@@ -231,7 +231,7 @@ namespace openvslam {
                 if (init_triangulated_non_slam_pts.find(match.first) == init_triangulated_non_slam_pts.end()) {
                     continue;
                 }
-                
+
                 auto lm = new data::landmark(init_triangulated_non_slam_pts.at(match.first), curr_keyfrm, map_db_);
                 configure_new_landmark(curr_frm, init_keyfrm, curr_keyfrm, match.first, match.second.second.get_id(), lm);
             }

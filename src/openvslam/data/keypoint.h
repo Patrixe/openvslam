@@ -12,6 +12,8 @@ namespace openvslam {
         struct keypoint {
             static void reset_id_counter();
 
+            void set_segmentation_class(const int seg_class);
+
         public:
             EIGEN_MAKE_ALIGNED_OPERATOR_NEW
             // key: class, value: point coordinates

@@ -114,12 +114,10 @@ unsigned int frame_publisher::draw_tracked_points(cv::Mat& img, const data::keyp
 
     unsigned int num_tracked = 0;
 
-    // TODO pali: Loop does not work anymore, indices are not necessaryly continuous
     for (const auto &keypoint : curr_keypts) {
-        // TODO pali: This filtering needs to be adapted
-        //        if (!is_tracked.at(i)) {
-//            continue;
-//        }
+        if (is_tracked.find(keypoint.first) == is_tracked.end()) {
+            continue;
+        }
 
         const cv::Point2f pt_begin{keypoint.second.get_cv_keypoint().pt.x * mag - radius, keypoint.second.get_cv_keypoint().pt.y * mag - radius};
         const cv::Point2f pt_end{keypoint.second.get_cv_keypoint().pt.x * mag + radius, keypoint.second.get_cv_keypoint().pt.y * mag + radius};
@@ -199,13 +197,14 @@ void frame_publisher::update(tracking_module* tracker) {
             break;
         }
         case tracker_state_t::Tracking: {
+            is_tracked_.clear();
             for (auto &lm : tracker->curr_frm_.landmarks_) {
                 if (lm.second->is_outlier()) {
                     continue;
                 }
 
                 if (0 < lm.second->num_observations()) {
-                    is_tracked_[lm.second->get_id()] = true;
+                    is_tracked_[lm.first] = true;
                 }
             }
             break;

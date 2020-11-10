@@ -43,6 +43,9 @@ public:
     //! Run main loop of the mapping module
     void run();
 
+    // Allow the mapping module to run within the same thread as tracking
+    void run_inline();
+
     //! Queue a keyframe to process the mapping
     void queue_keyframe(data::keyframe* keyfrm);
 

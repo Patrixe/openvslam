@@ -144,7 +144,7 @@ unsigned int bow_tree::match_keyframes(data::keyframe* keyfrm_1, data::keyframe*
 
     // keyframe2の特徴点のうち，keyfram1の特徴点と対応が取れているものはtrueにする
     // NOTE: sizeはkeyframe2の特徴点に一致
-    std::vector<bool> is_already_matched_in_keyfrm_2(keyfrm_2_lms.size(), false);
+    std::map<int, bool> is_already_matched_in_keyfrm_2;
 
 #ifdef USE_DBOW2
     DBoW2::FeatureVector::const_iterator itr_1 = keyfrm_1->bow_feat_vec_.begin();
@@ -198,7 +198,7 @@ unsigned int bow_tree::match_keyframes(data::keyframe* keyfrm_1, data::keyframe*
                         continue;
                     }
 
-                    if (is_already_matched_in_keyfrm_2.at(keypoint_keyframe2.get_id())) {
+                    if (is_already_matched_in_keyfrm_2.find(keypoint_keyframe2.get_id()) != is_already_matched_in_keyfrm_2.end()) {
                         continue;
                     }
 
@@ -229,7 +229,7 @@ unsigned int bow_tree::match_keyframes(data::keyframe* keyfrm_1, data::keyframe*
                 // keyframe1のidx_1とkeyframe2のbest_idx_2が対応している
                 matched_lms_in_keyfrm_1[keypoint_keyframe1.get_id()] = keyfrm_2_lms.at(keyfrm_2->get_keypoint_id_from_bow_id(best_idx_2));
                 // keyframe2のbest_idx_2はすでにkeyframe1の特徴点と対応している
-                is_already_matched_in_keyfrm_2.at(keyfrm_2->get_keypoint_id_from_bow_id(best_idx_2)) = true;
+                is_already_matched_in_keyfrm_2[keyfrm_2->get_keypoint_id_from_bow_id(best_idx_2)] = true;
 
                 num_matches++;
 

@@ -9,7 +9,7 @@ namespace openvslam {
             std::vector<data::landmark*> resampled;
             resampled.reserve(elements.size());
             for (auto idx : elements) {
-                if (indices.at(idx.first)) {
+                if (std::find(indices.begin(), indices.end(), idx.first) != indices.end()) {
                     resampled.push_back(idx.second);
                 }
             }

@@ -97,6 +97,52 @@ void mapping_module::run() {
     spdlog::info("terminate mapping module");
 }
 
+void mapping_module::run_inline() {
+    // check if termination is requested
+    if (terminate_is_requested()) {
+        // terminate and break
+        terminate();
+        return;
+    }
+
+    // check if pause is requested
+//    if (pause_is_requested()) {
+//        // if any keyframe is queued, all of them must be processed before the pause
+//        while (keyframe_is_queued()) {
+//            // create and extend the map with the new keyframe
+//            mapping_with_new_keyframe();
+//            // send the new keyframe to the global optimization module
+//            global_optimizer_->queue_keyframe(cur_keyfrm_);
+//        }
+//        // pause and wait
+//        pause();
+//        // check if termination or reset is requested during pause
+//        while (is_paused() && !terminate_is_requested() && !reset_is_requested()) {
+//            std::this_thread::sleep_for(std::chrono::milliseconds(3));
+//        }
+//    }
+
+    // check if reset is requested
+    if (reset_is_requested()) {
+        // reset, UNLOCK and continue
+        reset();
+//        set_keyframe_acceptability(true);
+        return;
+    }
+
+    // if the queue is empty, the following process is not needed
+    if (!keyframe_is_queued()) {
+        // UNLOCK and continue
+//        set_keyframe_acceptability(true);
+        return;
+    }
+
+    // create and extend the map with the new keyframe
+    mapping_with_new_keyframe();
+    // send the new keyframe to the global optimization module
+    global_optimizer_->queue_keyframe(cur_keyfrm_);
+}
+
 void mapping_module::queue_keyframe(data::keyframe* keyfrm) {
     std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
     keyfrms_queue_.push_back(keyfrm);

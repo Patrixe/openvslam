@@ -413,5 +413,16 @@ bool keyframe::has_null_landmarks() {
     return false;
 }
 
+int keyframe::get_number_of_invalid_landmarks() {
+    int count = 0;
+    for (auto &lm_pair : landmarks_) {
+        if (lm_pair.second->will_be_erased()) {
+            count++;
+        }
+    }
+
+    return count;
+}
+
 } // namespace data
 } // namespace openvslam

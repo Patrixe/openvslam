@@ -194,6 +194,7 @@ public:
     bool will_be_erased();
 
     bool has_null_landmarks();
+    int get_number_of_invalid_landmarks();
 
     //-----------------------------------------
     // for local map update
@@ -323,6 +324,7 @@ private:
 
     //! flag which indicates this keyframe will be erased
     std::atomic<bool> will_be_erased_{false};
+
     };
 
 } // namespace data

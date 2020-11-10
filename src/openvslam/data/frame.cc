@@ -274,5 +274,16 @@ void frame::compute_stereo_from_depth(const cv::Mat& right_img_depth) {
         undist_keypt.set_stereo_x_offset(undist_keypt.get_cv_keypoint().pt.x - camera_->focal_x_baseline_ / depth);
     }
 }
+
+    int frame::get_number_of_invalid_landmarks() {
+        int count = 0;
+        for (auto &lm_pair : landmarks_) {
+            if (lm_pair.second->will_be_erased()) {
+                count++;
+            }
+        }
+
+        return count;
+    }
 } // namespace data
 } // namespace openvslam

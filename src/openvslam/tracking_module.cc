@@ -251,6 +251,7 @@ namespace openvslam {
     }
 
     void tracking_module::track() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
         if (tracking_state_ == tracker_state_t::NotInitialized) {
             tracking_state_ = tracker_state_t::Initializing;
         }
@@ -333,9 +334,11 @@ namespace openvslam {
             }
 
             // tidy up observations
-            for (auto lm : curr_frm_.landmarks_) {
-                if (lm.second->is_outlier()) {
-                    curr_frm_.landmarks_.erase(lm.first);
+            for (auto lm = curr_frm_.landmarks_.begin(); lm != curr_frm_.landmarks_.end();) {
+                if (lm->second->is_outlier()) {
+                    curr_frm_.landmarks_.erase(lm++);
+                } else {
+                    ++lm;
                 }
             }
         }
@@ -374,6 +377,9 @@ namespace openvslam {
         bool succeeded = false;
         if (tracking_state_ == tracker_state_t::Tracking) {
             spdlog::debug("--Before tracking: {} landmarks in ref-keyframe", ref_keyfrm_->get_landmarks().size());
+            spdlog::debug("--Before tracking: {} landmarks in ref-keyframe are invalid", ref_keyfrm_->get_number_of_invalid_landmarks());
+            spdlog::debug("--Before tracking: {} landmarks in current frame are invalid", curr_frm_.get_number_of_invalid_landmarks());
+            spdlog::debug("--Before tracking: {} landmarks in last frame are invalid", last_frm_.get_number_of_invalid_landmarks());
             // Tracking mode
             if (velocity_is_valid_ && last_reloc_frm_id_ + 2 < curr_frm_.id_) {
                 // if the motion model is valid
@@ -436,7 +442,8 @@ namespace openvslam {
 
         // count up the number of tracked landmarks
         num_tracked_lms_ = 0;
-        for (auto &lm : curr_frm_.landmarks_) {
+        for (auto iter = curr_frm_.landmarks_.begin(); iter != curr_frm_.landmarks_.end();) {
+            auto &lm = *iter;
             if (!lm.second->is_outlier()) {
                 // the observation has been considered as inlier in the pose optimization
                 assert(lm.second->has_observation());
@@ -447,8 +454,10 @@ namespace openvslam {
             } else {
                 // the observation has been considered as outlier in the pose optimization
                 // remove the observation
-                curr_frm_.landmarks_.erase(lm.first);
+                curr_frm_.landmarks_.erase(iter++);
+                continue;
             }
+            ++iter;
         }
 
         constexpr unsigned int num_tracked_lms_thr = 20;
@@ -471,10 +480,12 @@ namespace openvslam {
     void tracking_module::update_local_map() {
         spdlog::debug("update local map: {} landmarks in ref-keyframe", curr_frm_.landmarks_.size());
         // clean landmark associations
-        for (auto &lm : curr_frm_.landmarks_) {
-            if (lm.second->will_be_erased()) {
-                curr_frm_.landmarks_.erase(lm.first);
+        for (auto lm = curr_frm_.landmarks_.begin(); lm != curr_frm_.landmarks_.end();) {
+            if (lm->second->will_be_erased()) {
+                curr_frm_.landmarks_.erase(lm++);
                 continue;
+            } else {
+                ++lm;
             }
         }
         spdlog::debug("update local map: {} landmarks in ref-keyframe after erasing", curr_frm_.landmarks_.size());

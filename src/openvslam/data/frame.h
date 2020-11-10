@@ -161,6 +161,8 @@ namespace openvslam {
             bool can_observe(landmark *lm, const float ray_cos_thr,
                              Vec2_t &reproj, float &x_right, unsigned int &pred_scale_level) const;
 
+
+            int get_number_of_invalid_landmarks();
             /**
              * Get keypoints in the area around the reference point.
              * @param ref_x
@@ -293,6 +295,7 @@ namespace openvslam {
             Mat33_t rot_wc_;
             //! translation: camera -> world
             Vec3_t cam_center_;
+
         };
 
     } // namespace data

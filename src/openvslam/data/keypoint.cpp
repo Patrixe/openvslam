@@ -79,6 +79,10 @@ namespace openvslam {
             this->seg_class = seg_class;
         }
 
+        int keypoint::get_segmentation_class() const {
+            return seg_class;
+        }
+
         std::vector<cv::KeyPoint> keypoint_container::get_all_cv_keypoints() const {
             std::vector<cv::KeyPoint> keypoints;
             keypoints.reserve(this->size());

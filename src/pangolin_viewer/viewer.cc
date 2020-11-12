@@ -288,41 +288,54 @@ void viewer::draw_landmarks() {
     }
 
     glPointSize(point_size_ * *menu_lm_size_);
-    glColor3fv(cs_.lm_.data());
-
-    glBegin(GL_POINTS);
 
     for (const auto lm : landmarks) {
         if (!lm || lm->will_be_erased()) {
             continue;
         }
+
         if (*menu_show_local_map_ && local_landmarks.count(lm)) {
             continue;
         }
+
+        glBegin(GL_POINTS);
+        auto &lm_keypoint = lm->get_ref_keyframe()->undist_keypts_.at(lm->get_index_in_keyframe(lm->get_ref_keyframe()));
+        if (lm_keypoint.get_segmentation_class() == -1) {
+            glColor3fv(cs_.lm_.data());
+        } else {
+            glColor3fv(openvslam::segmentation_config::get_class_color(lm_keypoint.get_segmentation_class()));
+        }
+
         const openvslam::Vec3_t pos_w = lm->get_pos_in_world();
         glVertex3fv(pos_w.cast<float>().eval().data());
+        glEnd();
     }
 
-    glEnd();
 
     if (!*menu_show_local_map_) {
         return;
     }
 
     glPointSize(point_size_ * *menu_lm_size_);
-    glColor3fv(cs_.local_lm_.data());
-
-    glBegin(GL_POINTS);
 
     for (const auto local_lm : local_landmarks) {
         if (local_lm->will_be_erased()) {
             continue;
         }
+        glBegin(GL_POINTS);
+
+        auto &lm_keypoint = local_lm->get_ref_keyframe()->undist_keypts_.at(local_lm->get_index_in_keyframe(local_lm->get_ref_keyframe()));
+        if (lm_keypoint.get_segmentation_class() == -1) {
+            glColor3fv(cs_.local_lm_.data());
+        } else {
+            glColor3fv(openvslam::segmentation_config::get_class_color(lm_keypoint.get_segmentation_class()));
+        }
+
         const openvslam::Vec3_t pos_w = local_lm->get_pos_in_world();
         glVertex3fv(pos_w.cast<float>().eval().data());
+        glEnd();
     }
 
-    glEnd();
 }
 
 void viewer::draw_camera(const pangolin::OpenGlMatrix& gl_cam_pose_wc, const float width) const {

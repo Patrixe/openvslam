@@ -352,7 +352,7 @@ void map_database::to_json(nlohmann::json& json_keyfrms, nlohmann::json& json_la
         const auto id = id_lm.first;
         const auto lm = id_lm.second;
         assert(lm);
-        assert(id == lm->id_);
+        assert(id == lm->id_); // wrong
         assert(!lm->will_be_erased());
         lm->update_normal_and_depth();
         assert(!landmarks.count(std::to_string(id)));

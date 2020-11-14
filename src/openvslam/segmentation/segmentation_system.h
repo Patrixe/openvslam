@@ -18,6 +18,8 @@ namespace openvslam {
 
     class global_optimization_module;
 
+    class audit_exporter;
+
     namespace camera {
         class base;
     } // namespace camera
@@ -47,6 +49,11 @@ namespace openvslam {
 
         Mat44_t feed_stereo_frame(const cv::Mat &left_img, const cv::Mat &right_img, const cv::Mat &left_seg_img,
                                   const cv::Mat &right_seg_img, const double timestamp, const cv::Mat &mask);
+
+        ~segmentation_system() override;
+
+    private:
+        audit_exporter *audit_exporter;
     };
 }
 

@@ -1,3 +1,4 @@
+
 #include "openvslam/config.h"
 #include "openvslam/camera/perspective.h"
 #include "openvslam/camera/fisheye.h"
@@ -96,6 +97,13 @@ config::config(const YAML::Node& yaml_node, const std::string& config_file_path)
     spdlog::debug("load depthmap factor");
     if (camera_->setup_type_ == camera::setup_type_t::RGBD) {
         depthmap_factor_ = yaml_node_["depthmap_factor"].as<double>(1.0);
+    }
+
+    try {
+        do_audit = yaml_node["do_audit"].as<bool>(false);
+        audit_save_path = yaml_node["do_audit.save_path"].as<std::string>("");
+    } catch (YAML::InvalidNode &e) {
+        do_audit = false;
     }
 }
 

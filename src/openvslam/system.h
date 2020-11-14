@@ -42,7 +42,7 @@ public:
     system(const std::shared_ptr<config>& cfg, const std::string& vocab_file_path);
 
     //! Destructor
-    ~system();
+    virtual ~system();
 
     //-----------------------------------------
     // system startup and shutdown

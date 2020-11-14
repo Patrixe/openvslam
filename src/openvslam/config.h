@@ -36,6 +36,11 @@ public:
 
     //! depthmap factor (pixel_value / depthmap_factor = true_depth)
     double depthmap_factor_ = 1.0;
+
+    //! Whether keypoints and landmarks should be audited.
+    bool do_audit = false;
+    //! Where the audit files should be stored
+    std::string audit_save_path;
 };
 
 } // namespace openvslam

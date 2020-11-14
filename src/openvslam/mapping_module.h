@@ -4,6 +4,7 @@
 #include "openvslam/camera/base.h"
 #include "openvslam/module/local_map_cleaner.h"
 #include "openvslam/optimize/local_bundle_adjuster.h"
+#include "audit_exporter.h"
 
 #include <mutex>
 #include <atomic>
@@ -27,6 +28,8 @@ class mapping_module {
 public:
     //! Constructor
     mapping_module(data::map_database* map_db, const bool is_monocular);
+    //! Constructor
+    mapping_module(data::map_database* map_db, const bool is_monocular, audit_exporter *audit);
 
     //! Destructor
     ~mapping_module();
@@ -225,6 +228,8 @@ private:
 
     //! current keyframe which is used in the current mapping
     data::keyframe* cur_keyfrm_ = nullptr;
+
+    audit_exporter* auditer;
 };
 
 } // namespace openvslam

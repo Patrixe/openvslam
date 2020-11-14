@@ -22,6 +22,12 @@ mapping_module::mapping_module(data::map_database* map_db, const bool is_monocul
     spdlog::debug("CONSTRUCT: mapping_module");
 }
 
+mapping_module::mapping_module(data::map_database* map_db, const bool is_monocular, audit_exporter* auditer)
+    : local_map_cleaner_(new module::local_map_cleaner(is_monocular)), map_db_(map_db),
+      local_bundle_adjuster_(new optimize::local_bundle_adjuster()), is_monocular_(is_monocular), auditer(auditer) {
+    spdlog::debug("CONSTRUCT: mapping_module");
+}
+
 mapping_module::~mapping_module() {
     spdlog::debug("DESTRUCT: mapping_module");
 }
@@ -89,6 +95,10 @@ void mapping_module::run() {
         mapping_with_new_keyframe();
         // send the new keyframe to the global optimization module
         global_optimizer_->queue_keyframe(cur_keyfrm_);
+
+        if (auditer) {
+            auditer->log_keyframe(cur_keyfrm_);
+        }
 
         // LOCK end
         set_keyframe_acceptability(true);

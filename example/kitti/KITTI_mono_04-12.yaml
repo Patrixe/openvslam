@@ -49,3 +49,9 @@ PangolinViewer.viewpoint_x: 0
 PangolinViewer.viewpoint_y: -20
 PangolinViewer.viewpoint_z: -0.1
 PangolinViewer.viewpoint_f: 2800
+
+#===========================#
+# Use audit function to get information about keypoints and landmarks #
+#===========================#
+do_audit: true
+do_audit.save_path: /Users/patrickliedtke/data/slam/kitti_test

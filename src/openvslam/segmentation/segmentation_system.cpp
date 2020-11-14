@@ -10,6 +10,7 @@
 #include "openvslam/publish/map_publisher.h"
 #include "openvslam/publish/frame_publisher.h"
 #include "openvslam/mapping_module.h"
+#include "openvslam/audit_exporter.h"
 #include "openvslam/global_optimization_module.h"
 
 namespace openvslam {
@@ -19,10 +20,11 @@ namespace openvslam {
         frame_publisher_ = std::shared_ptr<publish::frame_publisher>(new publish::frame_publisher(cfg_, map_db_));
         map_publisher_ = std::shared_ptr<publish::map_publisher>(new publish::map_publisher(cfg_, map_db_));
 
+        audit_exporter = new class audit_exporter(cfg);
         // tracking module
         tracker_ = new tracking_module(cfg_, this, map_db_, bow_vocab_, bow_db_, seg_cfg);
         // mapping module
-        mapper_ = new mapping_module(map_db_, camera_->setup_type_ == camera::setup_type_t::Monocular);
+        mapper_ = new mapping_module(map_db_, camera_->setup_type_ == camera::setup_type_t::Monocular, audit_exporter);
         // global optimization module
         global_optimizer_ = new global_optimization_module(map_db_, bow_db_, bow_vocab_,
                                                            camera_->setup_type_ != camera::setup_type_t::Monocular);
@@ -66,5 +68,9 @@ namespace openvslam {
         }
 
         return cam_pose_cw;
+    }
+
+    segmentation_system::~segmentation_system() {
+        delete audit_exporter;
     }
 }

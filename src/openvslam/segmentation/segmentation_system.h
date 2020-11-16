@@ -53,7 +53,7 @@ namespace openvslam {
         ~segmentation_system() override;
 
     private:
-        audit_exporter *audit_exporter;
+        audit_exporter *auditer;
     };
 }
 

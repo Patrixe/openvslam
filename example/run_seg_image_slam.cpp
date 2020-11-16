@@ -292,8 +292,8 @@ int main(int argc, char *argv[]) {
                                                                "directory path which contains the right images of a stereo recording");
     auto seg_dir_path_right = op.add<popl::Value<std::string>>("t", "segmentation-dir-right",
                                                                "segmentation directory path for the right images");
-
     auto config_file_path = op.add<popl::Value<std::string>>("c", "config", "config file path");
+    auto audit_output_path = op.add<popl::Value<std::string>>("a", "audit output path", "where to store the audit files");
     auto mask_img_path = op.add<popl::Value<std::string>>("", "mask", "mask image path", "");
     auto frame_skip = op.add<popl::Value<unsigned int>>("", "frame-skip", "interval of frame skip", 1);
     auto no_sleep = op.add<popl::Switch>("", "no-sleep", "not wait for next frame in real time");
@@ -340,6 +340,10 @@ int main(int argc, char *argv[]) {
     catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
+    }
+
+    if (audit_output_path->is_set()) {
+        cfg->audit_save_path = audit_output_path->value();
     }
 
 #ifdef USE_GOOGLE_PERFTOOLS

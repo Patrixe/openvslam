@@ -8,7 +8,7 @@ segmented_image_sequence::segmented_image_sequence(const std::string& img_dir_pa
     : image_sequence(img_dir_path, fps) {
     DIR* dir;
     if ((dir = opendir(seg_dir_path.c_str())) == nullptr) {
-        throw std::runtime_error("directory " + img_dir_path + " does not exist");
+        throw std::runtime_error("directory " + seg_dir_path + " does not exist");
     }
     dirent* dp;
 

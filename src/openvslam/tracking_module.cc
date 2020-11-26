@@ -296,9 +296,7 @@ namespace openvslam {
 
             // update the local map and optimize the camera pose of the current frame
             if (succeeded) {
-                spdlog::info("before updating local map, {} landmarks", this->curr_frm_.landmarks_.size());
                 update_local_map();
-                spdlog::info("after updating local map, {} landmarks", this->curr_frm_.landmarks_.size());
                 succeeded = optimize_current_frame_with_local_map();
             }
 
@@ -587,7 +585,7 @@ namespace openvslam {
     }
 
     void tracking_module::insert_new_keyframe() {
-        spdlog::info("Inserting keyframe with {} landmarks", curr_frm_.landmarks_.size());
+        spdlog::debug("Inserting keyframe with {} landmarks", curr_frm_.landmarks_.size());
         // insert the new keyframe
         const auto ref_keyfrm = keyfrm_inserter_.insert_new_keyframe(curr_frm_);
         // set the reference keyframe with the new keyframe

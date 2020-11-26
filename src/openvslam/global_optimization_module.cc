@@ -109,7 +109,7 @@ void global_optimization_module::run() {
 
         // validate candidates and select ONE candidate from them
         if (!loop_detector_->validate_candidates()) {
-            spdlog::info("No validate candidate for loop detection");
+            spdlog::debug("No validate candidate for loop detection");
             // could not find
             // allow the removal of the current keyframe
             cur_keyfrm_->set_to_be_erased();

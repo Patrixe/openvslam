@@ -314,7 +314,7 @@ void mapping_module::create_new_landmarks() {
         triangulate_with_two_keyframes(cur_keyfrm_, ngh_keyfrm, matches);
         spdlog::debug("MM: landmarks after triangulation: {}", cur_keyfrm_->get_landmarks().size());
     }
-    spdlog::info("MM: After creating new landmarks in mapping module, cur_keyfrm has {} landmarks", cur_keyfrm_->get_landmarks().size());
+    spdlog::debug("MM: After creating new landmarks in mapping module, cur_keyfrm has {} landmarks", cur_keyfrm_->get_landmarks().size());
 }
 
 void mapping_module::triangulate_with_two_keyframes(data::keyframe* keyfrm_1, data::keyframe* keyfrm_2,

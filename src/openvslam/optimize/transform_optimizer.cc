@@ -61,19 +61,16 @@ unsigned int transform_optimizer::optimize(data::keyframe* keyfrm_1, data::keyfr
     // 有効な対応数
     unsigned int num_valid_matches = 0;
 
-    for (unsigned int idx1 = 0; idx1 < num_matches; ++idx1) {
+    for (const auto &matched_landmarks : matched_lms_in_keyfrm_2) {
         // matching情報があるもののみを対象とする
-        if (matched_lms_in_keyfrm_2.find(idx1) == matched_lms_in_keyfrm_2.end()) {
+        // the matching process resulted keypoints, but we have to limit to landmarks
+        if (lms_in_keyfrm_1.find(matched_landmarks.first) == lms_in_keyfrm_1.end()) {
             continue;
         }
 
-        auto lm_1 = lms_in_keyfrm_1.at(idx1);
-        auto lm_2 = matched_lms_in_keyfrm_2.at(idx1);
+        auto lm_1 = lms_in_keyfrm_1.at(matched_landmarks.first);
+        auto lm_2 = matched_landmarks.second;
 
-        // 3次元点が両方存在するもののみを対象とする
-        if (!lm_1 || !lm_2) {
-            continue;
-        }
         if (lm_1->will_be_erased() || lm_2->will_be_erased()) {
             continue;
         }
@@ -85,7 +82,7 @@ unsigned int transform_optimizer::optimize(data::keyframe* keyfrm_1, data::keyfr
         }
 
         // forward/backward edgesを作成してoptimizerにセット
-        reproj_edge_wrapper mutual_edge(keyfrm_1, idx1, lm_1, keyfrm_2, idx2, lm_2, Sim3_12_vtx, sqrt_chi_sq);
+        reproj_edge_wrapper mutual_edge(keyfrm_1, matched_landmarks.first, lm_1, keyfrm_2, idx2, lm_2, Sim3_12_vtx, sqrt_chi_sq);
         optimizer.addEdge(mutual_edge.edge_12_);
         optimizer.addEdge(mutual_edge.edge_21_);
 

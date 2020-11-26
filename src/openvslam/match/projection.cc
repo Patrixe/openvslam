@@ -391,7 +391,7 @@ unsigned int projection::match_by_Sim3_transform(data::keyframe* keyfrm, const M
 
         for (const auto neighbouring_keypoint_ref : keypoints_in_cell) {
             auto neighbouring_keypoint = neighbouring_keypoint_ref.get();
-            if (matched_lms_in_keyfrm.at(neighbouring_keypoint.get_id())) {
+            if (matched_lms_in_keyfrm.find(neighbouring_keypoint.get_id()) != matched_lms_in_keyfrm.end()) {
                 continue;
             }
 
@@ -442,23 +442,23 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
     const auto landmarks_2 = keyfrm_2->get_landmarks();
 
     // keyframe1と2で，すでにマッチングしている特徴点があればマークしておく
-    std::vector<bool> is_already_matched_in_keyfrm_1(landmarks_1.size(), false);
-    std::vector<bool> is_already_matched_in_keyfrm_2(landmarks_2.size(), false);
+    std::map<int, bool> is_already_matched_in_keyfrm_1;
+    std::map<int, bool> is_already_matched_in_keyfrm_2;
 
-    for (unsigned int idx_1 = 0; idx_1 < landmarks_1.size(); ++idx_1) {
-        if (matched_lms_in_keyfrm_1.find(idx_1) == matched_lms_in_keyfrm_1.end()) {
+    for (const auto& lm_pair : landmarks_1) {
+        if (matched_lms_in_keyfrm_1.find(lm_pair.first) == matched_lms_in_keyfrm_1.end()) {
             continue;
         }
-        auto* lm = matched_lms_in_keyfrm_1.at(idx_1);
+
+        auto* lm = matched_lms_in_keyfrm_1.at(lm_pair.first);
         const auto idx_2 = lm->get_index_in_keyframe(keyfrm_2);
-        if (0 <= idx_2 && idx_2 < static_cast<int>(landmarks_2.size())) {
-            is_already_matched_in_keyfrm_1.at(idx_1) = true;
-            is_already_matched_in_keyfrm_2.at(idx_2) = true;
-        }
+
+        is_already_matched_in_keyfrm_1[lm_pair.first] = true;
+        is_already_matched_in_keyfrm_2[idx_2] = true;
     }
 
-    std::vector<int> matched_indices_2_in_keyfrm_1(landmarks_1.size(), -1);
-    std::vector<int> matched_indices_1_in_keyfrm_2(landmarks_2.size(), -1);
+    std::map<int, int> matched_indices_2_in_keyfrm_1;
+    std::map<int, int> matched_indices_1_in_keyfrm_2;
 
     // keyframe1で観測している3次元点をkeyframe2の座標系へ相似変換してから再投影し，
     // 対応している特徴点を探す
@@ -468,16 +468,14 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
     {
         const Mat33_t s_rot_21w = s_rot_21 * rot_1w;
         const Vec3_t trans_21w = s_rot_21 * trans_1w + trans_21;
-        for (unsigned int idx_1 = 0; idx_1 < landmarks_1.size(); ++idx_1) {
-            auto* lm = landmarks_1.at(idx_1);
-            if (!lm) {
-                continue;
-            }
+        for (const auto& lm_pair : landmarks_1) {
+            auto* lm = lm_pair.second;
+
             if (lm->will_be_erased()) {
                 continue;
             }
 
-            if (is_already_matched_in_keyfrm_1.at(idx_1)) {
+            if (is_already_matched_in_keyfrm_1.find(lm_pair.first) != is_already_matched_in_keyfrm_1.end()) {
                 continue;
             }
 
@@ -539,7 +537,7 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
             }
 
             if (best_hamm_dist <= HAMMING_DIST_THR_HIGH) {
-                matched_indices_2_in_keyfrm_1.at(idx_1) = best_matching_keypoint.get().get_id();
+                matched_indices_2_in_keyfrm_1[lm_pair.first] = best_matching_keypoint.get().get_id();
             }
         }
     }
@@ -552,16 +550,13 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
     {
         const Mat33_t s_rot_12w = s_rot_12 * rot_2w;
         const Vec3_t trans_12w = s_rot_12 * trans_2w + trans_12;
-        for (unsigned int idx_2 = 0; idx_2 < landmarks_2.size(); ++idx_2) {
-            auto* lm = landmarks_2.at(idx_2);
-            if (!lm) {
-                continue;
-            }
+        for (const auto lm_pair_keyframe_2 : landmarks_2) {
+            auto* lm = lm_pair_keyframe_2.second;
             if (lm->will_be_erased()) {
                 continue;
             }
 
-            if (is_already_matched_in_keyfrm_2.at(idx_2)) {
+            if (is_already_matched_in_keyfrm_2.find(lm_pair_keyframe_2.first) != is_already_matched_in_keyfrm_2.end()) {
                 continue;
             }
 
@@ -624,25 +619,37 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
             }
 
             if (best_hamm_dist <= HAMMING_DIST_THR_HIGH) {
-                matched_indices_1_in_keyfrm_2.at(idx_2) = best_matching_keypoint.get().get_id();
+                matched_indices_1_in_keyfrm_2[lm_pair_keyframe_2.first] = best_matching_keypoint.get().get_id();
             }
         }
     }
 
     // cross-matchのみを記録する
     unsigned int num_matches = 0;
-    for (unsigned int i = 0; i < landmarks_1.size(); ++i) {
-        const auto idx_2 = matched_indices_2_in_keyfrm_1.at(i);
-        if (idx_2 < 0) {
+    for (const auto &lm_1_pair : landmarks_1) {
+        if (matched_indices_2_in_keyfrm_1.find(lm_1_pair.first) == matched_indices_2_in_keyfrm_1.end()) {
             continue;
         }
 
-        const auto idx_1 = matched_indices_1_in_keyfrm_2.at(idx_2);
-        if (idx_1 == static_cast<int>(i)) {
+        int idx_2 = matched_indices_2_in_keyfrm_1.at(lm_1_pair.first);
+        if (matched_indices_1_in_keyfrm_2.find(idx_2) != matched_indices_1_in_keyfrm_2.end()) {
+            const auto idx_1 = matched_indices_1_in_keyfrm_2.at(idx_2);
             matched_lms_in_keyfrm_1[idx_1] = landmarks_2.at(idx_2);
             ++num_matches;
         }
     }
+//    for (unsigned int i = 0; i < landmarks_1.size(); ++i) {
+//        const auto idx_2 = matched_indices_2_in_keyfrm_1.at(i);
+//        if (idx_2 < 0) {
+//            continue;
+//        }
+//
+//        const auto idx_1 = matched_indices_1_in_keyfrm_2.at(idx_2);
+//        if (idx_1 == static_cast<int>(i)) {
+//            matched_lms_in_keyfrm_1[idx_1] = landmarks_2.at(idx_2);
+//            ++num_matches;
+//        }
+//    }
 
     return num_matches;
 }

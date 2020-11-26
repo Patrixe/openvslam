@@ -256,11 +256,11 @@ void mapping_module::store_new_keyframe() {
 void mapping_module::create_new_landmarks() {
     // get the covisibilities of `cur_keyfrm_`
     // in order to triangulate landmarks between `cur_keyfrm_` and each of the covisibilities
-    spdlog::info("--------------");
-    spdlog::info("MM: Before creating new landmarks in mapping module, cur_keyfrm has {} landmarks", cur_keyfrm_->get_landmarks().size());
+    spdlog::debug("--------------");
+    spdlog::debug("MM: Before creating new landmarks in mapping module, cur_keyfrm has {} landmarks", cur_keyfrm_->get_landmarks().size());
     constexpr unsigned int num_covisibilities = 10;
     const auto cur_covisibilities = cur_keyfrm_->graph_node_->get_top_n_covisibilities(num_covisibilities * (is_monocular_ ? 2 : 1));
-    spdlog::info("MM: Cur covisibielities: {}", cur_covisibilities.size());
+    spdlog::debug("MM: Cur covisibielities: {}", cur_covisibilities.size());
     // lowe's_ratio will not be used
     match::robust robust_matcher(0.0, false);
 
@@ -270,7 +270,6 @@ void mapping_module::create_new_landmarks() {
     for (unsigned int i = 0; i < cur_covisibilities.size(); ++i) {
         // if any keyframe is queued, abort the triangulation
         if (1 < i && keyframe_is_queued()) {
-            spdlog::info("MM: Skip because of queue");
             return;
         }
 
@@ -287,7 +286,7 @@ void mapping_module::create_new_landmarks() {
             // if the scene scale is much smaller than the baseline, abort the triangulation
             const float median_depth_in_ngh = ngh_keyfrm->compute_median_depth(true);
             if (baseline_dist < 0.02 * median_depth_in_ngh) {
-                spdlog::info("MM: Skip because of median depth");
+                spdlog::debug("MM: Skip because of median depth");
                 continue;
             }
         }
@@ -309,11 +308,11 @@ void mapping_module::create_new_landmarks() {
         // vector of matches (idx in the current, idx in the neighbor)
         std::vector<std::pair<unsigned int, unsigned int>> matches;
         robust_matcher.match_for_triangulation(cur_keyfrm_, ngh_keyfrm, E_ngh_to_cur, matches);
-        spdlog::info("MM: Robust matcher found {} matches", matches.size());
+        spdlog::debug("MM: Robust matcher found {} matches", matches.size());
 
         // triangulation
         triangulate_with_two_keyframes(cur_keyfrm_, ngh_keyfrm, matches);
-        spdlog::info("MM: landmarks after triangulation: {}", cur_keyfrm_->get_landmarks().size());
+        spdlog::debug("MM: landmarks after triangulation: {}", cur_keyfrm_->get_landmarks().size());
     }
     spdlog::info("MM: After creating new landmarks in mapping module, cur_keyfrm has {} landmarks", cur_keyfrm_->get_landmarks().size());
 }

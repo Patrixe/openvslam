@@ -143,7 +143,7 @@ namespace openvslam {
             Mat33_t get_rotation_inv() const;
 
 
-            int get_keypoint_id_from_bow_id(int bow_id);
+            int get_keypoint_id_from_bow_id(int bow_id) const;
 
             /**
              * Update ORB information

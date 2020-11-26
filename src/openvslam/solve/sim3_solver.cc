@@ -33,21 +33,22 @@ sim3_solver::sim3_solver(data::keyframe* keyfrm_1, data::keyframe* keyfrm_2,
         common_pts_in_keyfrm_2_.reserve(size);
         chi_sq_x_sigma_sq_1_.reserve(size);
         chi_sq_x_sigma_sq_2_.reserve(size);
-        matched_indices_1_.reserve(size);
-        matched_indices_2_.reserve(size);
+//        matched_indices_1_.reserve(size);
+//        matched_indices_2_.reserve(size);
     }
 
     // 有意水準1%のカイ2乗値(自由度2)
     constexpr float chi_sq_2D = 9.21034;
 
     num_common_pts_ = 0;
-    for (unsigned int idx1 = 0; idx1 < keyfrm_1_lms.size(); ++idx1) {
-        if (matched_lms_in_keyfrm_2.find(idx1) == matched_lms_in_keyfrm_2.end()) {
+    for (const auto& landmark_pair : keyfrm_1_lms) {
+//    for (unsigned int idx1 = 0; idx1 < keyfrm_1_lms.size(); ++idx1) {
+        if (matched_lms_in_keyfrm_2.find(landmark_pair.first) == matched_lms_in_keyfrm_2.end()) {
             continue;
         }
 
-        auto* lm_1 = keyfrm_1_lms.at(idx1);
-        auto* lm_2 = matched_lms_in_keyfrm_2.at(idx1);
+        auto* lm_1 = landmark_pair.second;
+        auto* lm_2 = matched_lms_in_keyfrm_2.at(landmark_pair.first);
 
         if (lm_1->will_be_erased() || lm_2->will_be_erased()) {
             continue;
@@ -59,8 +60,8 @@ sim3_solver::sim3_solver(data::keyframe* keyfrm_1, data::keyframe* keyfrm_2,
             continue;
         }
 
-        const auto& keypt_1 = keyfrm_1_->undist_keypts_.at(idx1);
-        const auto& keypt_2 = keyfrm_2_->undist_keypts_.at(idx2);
+        const auto& keypt_1 = keyfrm_1_->undist_keypts_.at(landmark_pair.first);
+        const auto& keypt_2 = keyfrm_2_->undist_keypts_.at(lm_2->get_index_in_keyframe(keyfrm_2_));
 
         const float sigma_sq_1 = keyfrm_1_->level_sigma_sq_.at(keypt_1.get_cv_keypoint().octave);
         const float sigma_sq_2 = keyfrm_2_->level_sigma_sq_.at(keypt_2.get_cv_keypoint().octave);
@@ -68,8 +69,8 @@ sim3_solver::sim3_solver(data::keyframe* keyfrm_1, data::keyframe* keyfrm_2,
         chi_sq_x_sigma_sq_1_.push_back(chi_sq_2D * sigma_sq_1);
         chi_sq_x_sigma_sq_2_.push_back(chi_sq_2D * sigma_sq_2);
 
-        matched_indices_1_.push_back(idx1);
-        matched_indices_2_.push_back(idx2);
+//        matched_indices_1_.push_back(idx1);
+//        matched_indices_2_.push_back(idx2);
 
         const Vec3_t pos_w_1 = lm_1->get_pos_in_world();
         common_pts_in_keyfrm_1_.emplace_back(rot_1w * pos_w_1 + trans_1w);

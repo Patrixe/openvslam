@@ -136,7 +136,7 @@ Mat33_t frame::get_rotation_inv() const {
     return rot_wc_;
 }
 
-int frame::get_keypoint_id_from_bow_id(int bow_id) {
+int frame::get_keypoint_id_from_bow_id(int bow_id) const {
     return bow_vector_translation.at(bow_id);
 }
 

@@ -299,7 +299,13 @@ void viewer::draw_landmarks() {
         }
 
         glBegin(GL_POINTS);
-        auto &lm_keypoint = lm->get_ref_keyframe()->undist_keypts_.at(lm->get_index_in_keyframe(lm->get_ref_keyframe()));
+        // dirty quick hack, but since its only the visualization for now...
+        int keyframe_index = lm->get_index_in_keyframe(lm->get_ref_keyframe());
+        if (lm->get_ref_keyframe()->undist_keypts_.find(keyframe_index) == lm->get_ref_keyframe()->undist_keypts_.end()) {
+            continue;
+        }
+
+        auto &lm_keypoint = lm->get_ref_keyframe()->undist_keypts_.at(keyframe_index);
         if (lm_keypoint.get_segmentation_class() == -1) {
             glColor3fv(cs_.lm_.data());
         } else {

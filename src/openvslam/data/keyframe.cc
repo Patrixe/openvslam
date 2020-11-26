@@ -176,7 +176,7 @@ Vec3_t keyframe::get_translation() const {
     return cam_pose_cw_.block<3, 1>(0, 3);
 }
 
-int keyframe::get_keypoint_id_from_bow_id(int bow_id) {
+int keyframe::get_keypoint_id_from_bow_id(int bow_id) const {
     return bow_vector_translation.at(bow_id);
 }
 

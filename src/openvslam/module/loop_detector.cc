@@ -35,6 +35,7 @@ void loop_detector::set_current_keyframe(data::keyframe* keyfrm) {
 bool loop_detector::detect_loop_candidates() {
     // if the loop detector is disabled or the loop has been corrected recently,
     // cannot perfrom the loop correction
+    spdlog::info("Entering loop candidate detection");
     if (!loop_detector_is_enabled_ || cur_keyfrm_->id_ < prev_loop_correct_keyfrm_id_ + 10) {
         // register to the BoW database
         bow_db_->add_keyframe(cur_keyfrm_);
@@ -46,10 +47,12 @@ bool loop_detector::detect_loop_candidates() {
     // 1-1. before inquiring, compute the minimum score of BoW similarity between the current and each of the covisibilities
 
     const float min_score = compute_min_score_in_covisibilities(cur_keyfrm_);
+    spdlog::info("min score in covisibilities: {}", min_score);
 
     // 1-2. inquiring to the BoW database about the similar keyframe whose score is lower than min_score
 
     const auto init_loop_candidates = bow_db_->acquire_loop_candidates(cur_keyfrm_, min_score);
+    spdlog::info("loop candidates: {}", init_loop_candidates.size());
 
     // 1-3. if no candidates are found, cannot perform the loop correction
 
@@ -67,7 +70,7 @@ bool loop_detector::detect_loop_candidates() {
     //    (note that "match of two keyframe sets" means the intersection of the two sets is NOT empty)
 
     const auto curr_cont_detected_keyfrm_sets = find_continuously_detected_keyframe_sets(cont_detected_keyfrm_sets_, init_loop_candidates);
-
+    spdlog::info("{} curr_cont_detected_keyframes", curr_cont_detected_keyfrm_sets.size());
     // 3. if the number of the detection is equal of greater than the threshold (`min_continuity_`),
     //    adopt it as one of the loop candidates
 
@@ -80,6 +83,7 @@ bool loop_detector::detect_loop_candidates() {
             // adopt as the candidates
             loop_candidates_to_validate_.push_back(candidate_keyfrm);
         }
+        spdlog::info("{} loop candidates to validate", loop_candidates_to_validate_.size());
     }
 
     // 4. Update the members for the next call of this function
@@ -268,19 +272,21 @@ bool loop_detector::select_loop_candidate_via_Sim3(const std::vector<data::keyfr
     // estimate and the Sim3 between the current keyframe and each of the candidates using the observed landmarks
     // the Sim3 is estimated both in linear and non-linear ways
     // if the inlier after the estimation is lower than the threshold, discard tha candidate
+    spdlog::info("Entering select_loop_candidate_via_Sim3");
 
     match::bow_tree bow_matcher(0.75, true);
     match::projection projection_matcher(0.75, true);
 
-    for (const auto candidate : loop_candidates) {
+    for (const auto &candidate : loop_candidates) {
         if (candidate->will_be_erased()) {
+            spdlog::info("Removed due to will be erased");
             continue;
         }
 
         // estimate the matches between the keypoints in the current keyframe and the landmarks observed in the candidate
         curr_match_lms_observed_in_cand.clear();
         const auto num_matches = bow_matcher.match_keyframes(cur_keyfrm_, candidate, curr_match_lms_observed_in_cand);
-
+        spdlog::info("Found {} matches", num_matches);
         // check the threshold
         if (num_matches < 20) {
             continue;
@@ -294,6 +300,7 @@ bool loop_detector::select_loop_candidate_via_Sim3(const std::vector<data::keyfr
                                   fix_scale_in_Sim3_estimation_, 20);
         solver.find_via_ransac(200);
         if (!solver.solution_is_valid()) {
+            spdlog::info("Removed due to invalid solution");
             continue;
         }
 
@@ -316,10 +323,11 @@ bool loop_detector::select_loop_candidate_via_Sim3(const std::vector<data::keyfr
 
         // check the threshold
         if (num_optimized_inliers < 20) {
+            spdlog::info("Removed due to not enough optimized inliers");
             continue;
         }
 
-        spdlog::debug("found loop candidate via nonlinear Sim3 optimization: keyframe {} - keyframe {}", candidate->id_, cur_keyfrm_->id_);
+        spdlog::info("found loop candidate via nonlinear Sim3 optimization: keyframe {} - keyframe {}", candidate->id_, cur_keyfrm_->id_);
 
         selected_candidate = candidate;
         // convert the estimated Sim3 from "candidate -> current" to "world -> current"

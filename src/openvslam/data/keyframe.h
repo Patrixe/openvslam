@@ -104,7 +104,7 @@ public:
      */
     Vec3_t get_translation() const;
 
-    int get_keypoint_id_from_bow_id(int bow_id);
+    int get_keypoint_id_from_bow_id(int bow_id) const;
 
     //-----------------------------------------
     // features and observations

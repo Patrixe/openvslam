@@ -109,6 +109,7 @@ void global_optimization_module::run() {
 
         // validate candidates and select ONE candidate from them
         if (!loop_detector_->validate_candidates()) {
+            spdlog::info("No validate candidate for loop detection");
             // could not find
             // allow the removal of the current keyframe
             cur_keyfrm_->set_to_be_erased();
@@ -326,8 +327,9 @@ void global_optimization_module::replace_duplicated_landmarks(const std::map<int
         std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
 
         for (auto &curr_match_lm_in_cand : curr_match_lms_observed_in_cand) {
-            auto lm_in_curr = cur_keyfrm_->get_landmark(curr_match_lm_in_cand.first);
-            if (lm_in_curr) {
+            const std::map<int, data::landmark *> &cur_keyframe_landmarks = cur_keyfrm_->get_landmarks();
+            if (cur_keyframe_landmarks.find(curr_match_lm_in_cand.first) != cur_keyframe_landmarks.end()) {
+                auto lm_in_curr = cur_keyfrm_->get_landmark(curr_match_lm_in_cand.first);
                 // if the landmark corresponding `idx` exists,
                 // replace it with `curr_match_lm_in_cand` (observed in the candidate)
                 lm_in_curr->replace(curr_match_lm_in_cand.second);
@@ -343,7 +345,6 @@ void global_optimization_module::replace_duplicated_landmarks(const std::map<int
     }
 
     // resolve duplications of landmarks between the current keyframe and the candidates of the loop candidate
-    // TODO pali: return type changed
     const auto curr_match_lms_observed_in_cand_covis = loop_detector_->current_matched_landmarks_observed_in_candidate_covisibilities();
     match::fuse fuser(0.8);
     for (const auto& t : Sim3s_nw_after_correction) {
@@ -352,16 +353,13 @@ void global_optimization_module::replace_duplicated_landmarks(const std::map<int
 
         // reproject the landmarks observed in the current keyframe to the neighbor,
         // then search duplication of the landmarks
-        std::vector<data::landmark*> lms_to_replace(curr_match_lms_observed_in_cand_covis.size(), nullptr);
+        std::map<data::landmark*, data::landmark*> lms_to_replace;
         fuser.detect_duplication(neighbor, Sim3_nw_after_correction, curr_match_lms_observed_in_cand_covis, 4, lms_to_replace);
 
         std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
         // if any landmark duplication is found, replace it
-        for (unsigned int i = 0; i < curr_match_lms_observed_in_cand_covis.size(); ++i) {
-            auto lm_to_replace = lms_to_replace.at(i);
-            if (lm_to_replace) {
-                lm_to_replace->replace(curr_match_lms_observed_in_cand_covis.at(i));
-            }
+        for (const auto &landmark_to_replace : lms_to_replace) {
+            landmark_to_replace.first->replace(landmark_to_replace.second);
         }
     }
 }

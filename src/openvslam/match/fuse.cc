@@ -11,7 +11,7 @@ namespace openvslam {
 namespace match {
 
 unsigned int fuse::detect_duplication(data::keyframe* keyfrm, const Mat44_t& Sim3_cw, const std::map<int, data::landmark*>& landmarks_to_check,
-                                      const float margin, std::vector<data::landmark*>& duplicated_lms_in_keyfrm) {
+                                      const float margin, std::map<data::landmark*, data::landmark*>& duplicated_lms_in_keyfrm) {
     unsigned int num_fused = 0;
 
     // Sim3を分解してSE3にする
@@ -21,12 +21,10 @@ unsigned int fuse::detect_duplication(data::keyframe* keyfrm, const Mat44_t& Sim
     const Vec3_t trans_cw = Sim3_cw.block<3, 1>(0, 3) / s_cw;
     const Vec3_t cam_center = -rot_cw.transpose() * trans_cw;
 
-    duplicated_lms_in_keyfrm = std::vector<data::landmark*>(landmarks_to_check.size(), nullptr);
-
     const auto valid_lms_in_keyfrm = keyfrm->get_valid_landmarks();
 
-    for (unsigned int i = 0; i < landmarks_to_check.size(); ++i) {
-        auto* lm = landmarks_to_check.at(i);
+    for (const auto &landmark_to_check : landmarks_to_check) {
+        auto* lm = landmark_to_check.second;
         if (lm->will_be_erased()) {
             continue;
         }
@@ -88,7 +86,6 @@ unsigned int fuse::detect_duplication(data::keyframe* keyfrm, const Mat44_t& Sim
                 continue;
             }
 
-            // TODO pali: Check this. Quick fixed for compilation.
             const auto& desc = neighbouring_keypoint_ref.get().get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
@@ -103,18 +100,18 @@ unsigned int fuse::detect_duplication(data::keyframe* keyfrm, const Mat44_t& Sim
             continue;
         }
 
-        auto* lm_in_keyfrm = keyfrm->get_landmark(best_matching_keypoint.get().get_id());
-        if (lm_in_keyfrm) {
+        const std::map<int, data::landmark *> &keyframe_landmarks = keyfrm->get_landmarks();
+        if (keyframe_landmarks.find(best_matching_keypoint.get().get_id()) != keyframe_landmarks.end()) {
+            auto* lm_in_keyfrm = keyfrm->get_landmark(best_matching_keypoint.get().get_id());
             // keyframeのbest_idxに対応する3次元点が存在する -> 重複している場合
             if (!lm_in_keyfrm->will_be_erased()) {
-                duplicated_lms_in_keyfrm.at(i) = lm_in_keyfrm;
+                duplicated_lms_in_keyfrm[landmark_to_check.second] = lm_in_keyfrm;
             }
         }
         else {
             // keyframeのbest_idxに対応する3次元点が存在しない
             // 観測情報を追加
             lm->add_observation(keyfrm, best_matching_keypoint.get().get_id());
-            // TODO pali: Wrong, this is inconsistent with the lms internal keypoint_id. Get rid of latter one
             keyfrm->add_landmark(lm, best_matching_keypoint.get().get_id());
         }
 
@@ -221,7 +218,6 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const T& landmark
                 }
             }
 
-            // TODO pali: Check this. Quick fixed for compilation.
             const auto& desc = keypt.get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);
@@ -361,7 +357,6 @@ unsigned int fuse::replace_duplication(data::keyframe* keyfrm, const std::map<in
                 }
             }
 
-            // TODO pali: Check this. Quick fixed for compilation.
             const auto& desc = keypt.get_orb_descriptor_as_cv_mat();
 
             const auto hamm_dist = compute_descriptor_distance_32(lm_desc, desc);

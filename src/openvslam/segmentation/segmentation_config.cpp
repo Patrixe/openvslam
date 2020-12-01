@@ -58,3 +58,7 @@ const float* openvslam::segmentation_config::get_class_color(int seg_class) {
 bool openvslam::segmentation_config::allowed_for_landmark(int seg_cls) {
     return ((1 << seg_cls) & accepted_for_keypoints);
 }
+
+int openvslam::segmentation_config::get_segmentation_assignment_mode() {
+    return 0;
+}

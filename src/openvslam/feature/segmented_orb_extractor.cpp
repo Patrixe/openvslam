@@ -314,17 +314,120 @@ namespace openvslam {
         void segmented_orb_extractor::apply_segmentation_information(data::keypoint_container &keypts_in_cell,
                                                                         const cv::Mat &segmentation_information,
                                                                         float scale_factor, int offset_x, int offset_y) {
-            for (auto &keypoint : keypts_in_cell) {
-                const auto &seg_class = segmentation_information.at<uchar>(
-                        (keypoint.second.get_cv_keypoint().pt.y + offset_y) * scale_factor,
-                        (keypoint.second.get_cv_keypoint().pt.x + offset_x) * scale_factor);
+            if (seg_cfg->get_segmentation_assignment_mode() == 0) {
+                for (auto &keypoint : keypts_in_cell) {
+                    const auto &seg_class = segmentation_information.at<uchar>(
+                            (keypoint.second.get_cv_keypoint().pt.y + offset_y) * scale_factor,
+                            (keypoint.second.get_cv_keypoint().pt.x + offset_x) * scale_factor);
 
-                keypoint.second.set_segmentation_class(seg_class);
+                    keypoint.second.set_segmentation_class(seg_class);
 
-                if (!this->seg_cfg->allowed_for_landmark(seg_class)) {
-                    keypoint.second.set_applicable_for_slam(false);
+                    if (!this->seg_cfg->allowed_for_landmark(seg_class)) {
+                        keypoint.second.set_applicable_for_slam(false);
+                    }
+                }
+
+                return;
+            }
+
+            if (seg_cfg->get_segmentation_assignment_mode() == 1) {
+                for (auto &keypoint : keypts_in_cell) {
+                    // query pixels all around the center of the feature for their class. Assuming 9_16 configuration of FAST detector.
+                    std::map<int, int, std::greater<int>> class_count;
+                    extract_fast_keypoint_classes(segmentation_information, scale_factor, offset_x, offset_y, keypoint,
+                                                  class_count);
+
+                    int seg_class = -1;
+                    for (auto segmentation_class : class_count) {
+                        // variable threshold to filter out noise
+                        if (segmentation_class.second > 1) {
+                            seg_class = segmentation_class.first;
+                            break;
+                        }
+                    }
+
+                    keypoint.second.set_segmentation_class(seg_class);
+                    if (!this->seg_cfg->allowed_for_landmark(seg_class)) {
+                        keypoint.second.set_applicable_for_slam(false);
+                    }
                 }
             }
+        }
+
+        void segmented_orb_extractor::extract_fast_keypoint_classes(const cv::Mat &segmentation_information,
+                                                                    float scale_factor,
+                                                                    int offset_x, int offset_y,
+                                                                    const std::pair<const int, data::keypoint> &keypoint,
+                                                                    std::map<int, int, std::greater<int>> &class_count) const {
+            // left three
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 1) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 3) * scale_factor)]++;
+
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 3) * scale_factor)]++;
+
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 1) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 3) * scale_factor)]++;
+
+            // right three
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 1) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 3) * scale_factor)]++;
+
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 3) * scale_factor)]++;
+
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 1) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 3) * scale_factor)]++;
+
+            // bottom three
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 3) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 1) * scale_factor)]++;
+
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 3) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x) * scale_factor)]++;
+
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 3) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 1) * scale_factor)]++;
+
+            // top three
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 3) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 1) * scale_factor)]++;
+
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 3) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x) * scale_factor)]++;
+
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 3) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 1) * scale_factor)]++;
+
+            // diagonal cases
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 2) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 2) * scale_factor)]++;
+
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 2) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 2) * scale_factor)]++;
+
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 2) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 2) * scale_factor)]++;
+
+            class_count[segmentation_information.at<uchar>(
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 2) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 2) * scale_factor)]++;
+
         }
     }
 }

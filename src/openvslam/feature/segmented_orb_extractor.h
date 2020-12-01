@@ -47,6 +47,11 @@ namespace openvslam {
 
             static void transform_to_keypoint_structure(std::vector<cv::KeyPoint> &keypts_in_cell,
                                                  data::keypoint_container &seg_keypts_in_cell);
+
+            void extract_fast_keypoint_classes(const cv::Mat &segmentation_information, float scale_factor,
+                                               int offset_x,
+                                               int offset_y, const std::pair<const int, data::keypoint> &keypoint,
+                                               std::map<int, int, std::greater<int>> &class_count) const;
         };
     }
 }

@@ -38,7 +38,7 @@ void mono_tracking(const std::shared_ptr<openvslam::config> &cfg,
                    const std::string &seg_dir_path,
                    const std::string &mask_img_path,
                    const unsigned int frame_skip, const bool no_sleep, const bool auto_term,
-                   const bool eval_log, const std::string &map_db_path) {
+                   const std::string &eval_log, const std::string &map_db_path) {
     // load the mask image
     const cv::Mat mask = mask_img_path.empty() ? cv::Mat{} : cv::imread(mask_img_path, cv::IMREAD_GRAYSCALE);
 
@@ -128,12 +128,12 @@ void mono_tracking(const std::shared_ptr<openvslam::config> &cfg,
     // shutdown the SLAM process
     SLAM.shutdown();
 
-    if (eval_log) {
+    if (!eval_log.empty()) {
         // output the trajectories for evaluation
-        SLAM.save_frame_trajectory("frame_trajectory.txt", "TUM");
-        SLAM.save_keyframe_trajectory("keyframe_trajectory.txt", "TUM");
+        SLAM.save_frame_trajectory(eval_log + "/frame_trajectory.txt", "TUM");
+        SLAM.save_keyframe_trajectory(eval_log + "/keyframe_trajectory.txt", "TUM");
         // output the tracking times for evaluation
-        std::ofstream ofs("track_times.txt", std::ios::out);
+        std::ofstream ofs(eval_log + "/track_times.txt", std::ios::out);
         if (ofs.is_open()) {
             for (const auto track_time : track_times) {
                 ofs << track_time << std::endl;
@@ -159,7 +159,7 @@ void stereo_tracking(const std::shared_ptr<openvslam::config> &cfg,
                      const std::string &seg_dir_path_right,
                      const std::string &mask_img_path,
                      const unsigned int frame_skip, const bool no_sleep, const bool auto_term,
-                     const bool eval_log, const std::string &map_db_path) {
+                     const std::string& eval_log, const std::string &map_db_path) {
     const segmented_image_sequence sequence_left(image_dir_path_left, seg_dir_path_left, cfg->camera_->fps_);
     const segmented_image_sequence sequence_right(image_dir_path_right, seg_dir_path_right, cfg->camera_->fps_);
     const auto frames_left = sequence_left.get_segmented_frames();
@@ -249,12 +249,12 @@ void stereo_tracking(const std::shared_ptr<openvslam::config> &cfg,
     // shutdown the SLAM process
     SLAM.shutdown();
 
-    if (eval_log) {
+    if (!eval_log.empty()) {
         // output the trajectories for evaluation
-        SLAM.save_frame_trajectory("frame_trajectory.txt", "TUM");
-        SLAM.save_keyframe_trajectory("keyframe_trajectory.txt", "TUM");
+        SLAM.save_frame_trajectory(eval_log + "/frame_trajectory.txt", "TUM");
+        SLAM.save_keyframe_trajectory(eval_log + "/keyframe_trajectory.txt", "TUM");
         // output the tracking times for evaluation
-        std::ofstream ofs("track_times.txt", std::ios::out);
+        std::ofstream ofs(eval_log + "/track_times.txt", std::ios::out);
         if (ofs.is_open()) {
             for (const auto track_time : track_times) {
                 ofs << track_time << std::endl;
@@ -299,7 +299,7 @@ int main(int argc, char *argv[]) {
     auto no_sleep = op.add<popl::Switch>("", "no-sleep", "not wait for next frame in real time");
     auto auto_term = op.add<popl::Switch>("", "auto-term", "automatically terminate the viewer");
     auto debug_mode = op.add<popl::Switch>("", "debug", "debug mode");
-    auto eval_log = op.add<popl::Switch>("", "eval-log", "store trajectory and tracking times for evaluation");
+    auto eval_log = op.add<popl::Value<std::string>>("", "eval-log", "store trajectory and tracking times for evaluation");
     auto map_db_path = op.add<popl::Value<std::string>>("p", "map-db", "store a map database at this path after SLAM",
                                                         "");
     try {
@@ -362,7 +362,7 @@ int main(int argc, char *argv[]) {
         mono_tracking(cfg, vocab_file_path->value(), img_dir_path->value(), seg_dir_path->value(),
                       mask_img_path->value(),
                       frame_skip->value(), no_sleep->is_set(), auto_term->is_set(),
-                      eval_log->is_set(), map_db_path->value());
+                      eval_log->value(), map_db_path->value());
     } else if (cfg->camera_->setup_type_ == openvslam::camera::setup_type_t::Stereo) {
         if (!img_dir_path->is_set() || !img_dir_path_right->is_set() ||
             !seg_dir_path->is_set() || !seg_dir_path_right->is_set()) {
@@ -376,7 +376,7 @@ int main(int argc, char *argv[]) {
                         seg_dir_path->value(), seg_dir_path_right->value(),
                         mask_img_path->value(),
                         frame_skip->value(), no_sleep->is_set(), auto_term->is_set(),
-                        eval_log->is_set(), map_db_path->value());
+                        eval_log->value(), map_db_path->value());
     } else {
         throw std::runtime_error("Invalid setup type: " + cfg->camera_->get_setup_type_string());
     }

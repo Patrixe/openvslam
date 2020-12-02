@@ -4,6 +4,8 @@
 #include "openvslam/data/map_database.h"
 #include "openvslam/match/base.h"
 
+#include "openvslam/segmentation/segmentation_config.h"
+
 #include <nlohmann/json.hpp>
 
 namespace openvslam {
@@ -18,9 +20,9 @@ landmark::landmark(const Vec3_t& pos_w, keyframe* ref_keyfrm, map_database* map_
 landmark::landmark(const unsigned int id, const unsigned int first_keyfrm_id,
                    const Vec3_t& pos_w, keyframe* ref_keyfrm,
                    const unsigned int num_visible, const unsigned int num_found,
-                   map_database* map_db)
+                   map_database* map_db, int segmentation_class)
     : id_(id), first_keyfrm_id_(first_keyfrm_id), pos_w_(pos_w), ref_keyfrm_(ref_keyfrm),
-      num_observable_(num_visible), num_observed_(num_found), map_db_(map_db) {}
+      num_observable_(num_visible), num_observed_(num_found), map_db_(map_db), segmentation_class(segmentation_class) {}
 
 void landmark::set_pos_in_world(const Vec3_t& pos_w) {
     std::lock_guard<std::mutex> lock(mtx_position_);
@@ -49,18 +51,39 @@ void landmark::set_outlier(bool outlier) {
     this->outlier = outlier;
 }
 
-void landmark::add_observation(keyframe* keyfrm, unsigned int idx) {
+bool landmark::is_applicable_for_slam() {
+    return openvslam::segmentation_config::allowed_for_landmark(segmentation_class);
+}
+
+int landmark::get_segmentation_class() {
+    return segmentation_class;
+}
+
+void landmark::add_observation(keyframe* keyfrm, unsigned int keypoint_id) {
     std::lock_guard<std::mutex> lock(mtx_observations_);
     if (observations_.count(keyfrm)) {
         return;
     }
-    observations_[keyfrm] = idx;
+    observations_[keyfrm] = keypoint_id;
 
-    if (0 <= keyfrm->undist_keypts_.at(idx).get_depth()) {
+    const keypoint &landmark_keypoint = keyfrm->undist_keypts_.at(keypoint_id);
+    if (0 <= landmark_keypoint.get_depth()) {
         num_observations_ += 2;
     }
     else {
         num_observations_ += 1;
+    }
+
+    // update segmentation observations and calculate new class
+    if (landmark_keypoint.get_segmentation_class() >= 0) {
+        segmentation_observations[landmark_keypoint.get_segmentation_class()]++;
+        const std::map<int, int>::iterator highest = std::max_element(segmentation_observations.begin(),
+                                                                      segmentation_observations.end(),
+                                                                      [](const std::pair<int, int> &a,
+                                                                         const std::pair<int, int> &b) -> bool {
+                                                                          return a.second < b.second;
+                                                                      });
+        segmentation_class = highest->first;
     }
 }
 

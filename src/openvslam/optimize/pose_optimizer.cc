@@ -6,15 +6,11 @@
 #include "openvslam/util/converter.h"
 
 #include <vector>
-#include <mutex>
 
-#include <Eigen/StdVector>
 #include <g2o/core/solver.h>
 #include <g2o/core/block_solver.h>
 #include <g2o/core/sparse_optimizer.h>
-#include <g2o/core/robust_kernel_impl.h>
 #include <g2o/solvers/eigen/linear_solver_eigen.h>
-#include <g2o/solvers/dense/linear_solver_dense.h>
 #include <g2o/core/optimization_algorithm_levenberg.h>
 #include <spdlog/spdlog.h>
 
@@ -63,7 +59,7 @@ unsigned int pose_optimizer::optimize(data::frame& frm) const {
     const float sqrt_chi_sq_3D = std::sqrt(chi_sq_3D);
 
     for (auto &lm : frm.landmarks_) {
-        if (lm.second->will_be_erased()) {
+        if (lm.second->will_be_erased() || !lm.second->is_applicable_for_slam()) {
             continue;
         }
 

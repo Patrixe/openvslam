@@ -312,10 +312,9 @@ bool loop_detector::select_loop_candidate_via_Sim3(const std::vector<data::keyfr
         const Vec3_t trans_cand_to_curr = solver.get_best_translation_12();
         const float scale_cand_to_curr = solver.get_best_scale_12();
 
-        // perforn non-linear optimization of the estimated Sim3
-
+        // perform non-linear optimization of the estimated Sim3
         projection_matcher.match_keyframes_mutually(cur_keyfrm_, candidate, curr_match_lms_observed_in_cand,
-                                                    scale_cand_to_curr, rot_cand_to_curr, trans_cand_to_curr, 7.5);
+                                                    scale_cand_to_curr, rot_cand_to_curr, trans_cand_to_curr, 7.5, true);
 
         g2o::Sim3 g2o_sim3_cand_to_curr(rot_cand_to_curr, trans_cand_to_curr, scale_cand_to_curr);
         const auto num_optimized_inliers = transform_optimizer_.optimize(cur_keyfrm_, candidate, curr_match_lms_observed_in_cand,

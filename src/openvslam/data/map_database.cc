@@ -271,6 +271,7 @@ void map_database::register_keyframe(camera_database* cam_db, bow_vocabulary* bo
 void map_database::register_landmark(const unsigned int id, const nlohmann::json& json_landmark) {
     const auto first_keyfrm_id = json_landmark.at("1st_keyfrm").get<int>();
     const auto keypoint_id = json_landmark.at("keypoint_id").get<int>();
+    const auto segmentation_class = json_landmark.at("segmentation_class").get<int>();
     const auto pos_w = Vec3_t(json_landmark.at("pos_w").get<std::vector<Vec3_t::value_type>>().data());
     const auto ref_keyfrm_id = json_landmark.at("ref_keyfrm").get<int>();
     const auto ref_keyfrm = keyframes_.at(ref_keyfrm_id);
@@ -278,9 +279,9 @@ void map_database::register_landmark(const unsigned int id, const nlohmann::json
     const auto num_found = json_landmark.at("n_fnd").get<unsigned int>();
 
     auto lm = new data::landmark(id, first_keyfrm_id, pos_w, ref_keyfrm,
-                                 num_visible, num_found, this);
+                                 num_visible, num_found, this, segmentation_class);
     assert(!landmarks_.count(id));
-    // TODO pali: Incorrect id
+    // TODO pali: Incorrect id. keypoint_id?
     landmarks_[lm->id_] = lm;
 }
 

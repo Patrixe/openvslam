@@ -7,15 +7,12 @@ namespace openvslam {
     namespace data {
         int keypoint::id_counter = 0;
 
+        keypoint::keypoint() {}
+
         keypoint::keypoint(cv::KeyPoint kPoint) : cvKeyPoint(std::move(kPoint)) {
             // not thread safe
             point_id = id_counter++;
         };
-
-        keypoint::keypoint() {
-            // not thread safe
-//            point_id = id_counter++;
-        }
 
         bool keypoint::is_applicable_for_slam() const {
             return applicable_for_slam;

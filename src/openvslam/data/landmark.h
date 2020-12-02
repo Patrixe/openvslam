@@ -30,7 +30,7 @@ public:
     //! constructor for map loading with computing parameters which can be recomputed
     landmark(const unsigned int id, const unsigned int first_keyfrm_id,
              const Vec3_t& pos_w, keyframe* ref_keyfrm, unsigned int num_visible, unsigned int num_found,
-             map_database* map_db);
+             map_database* map_db, int segmentation_class);
 
     //! set world coordinates of this landmark
     void set_pos_in_world(const Vec3_t& pos_w);
@@ -42,8 +42,10 @@ public:
     //! get reference keyframe, a keyframe at the creation of a given 3D point
     keyframe* get_ref_keyframe() const;
 
+    bool is_applicable_for_slam();
+
     //! add observation
-    void add_observation(keyframe* keyfrm, unsigned int idx);
+    void add_observation(keyframe* keyfrm, unsigned int keypoint_id);
     //! erase observation
     void erase_observation(keyframe* keyfrm);
 
@@ -107,6 +109,8 @@ public:
 
     int get_id();
 
+    int get_segmentation_class();
+
 public:
     unsigned int id_;
     static std::atomic<unsigned int> next_id_;
@@ -129,6 +133,9 @@ public:
 
 private:
     bool outlier = false;
+
+    int segmentation_class = -1;
+    std::map<int, int> segmentation_observations;
 
     //! world coordinates of this landmark
     Vec3_t pos_w_;

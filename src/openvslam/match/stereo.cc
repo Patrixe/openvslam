@@ -19,8 +19,7 @@ void stereo::compute() const {
     const auto indices_right_in_row = get_right_keypoint_indices_in_each_row(2.0);
 
     // 左画像の各特徴点についてサブピクセルで視差と深度を求める
-    std::vector<std::pair<int, data::keypoint&>> correlation_and_idx_left;
-    correlation_and_idx_left.reserve(num_keypts_);
+    std::map<int, std::pair<int, data::keypoint&>> correlation_and_idx_left;
 
 #ifdef USE_OPENMP
 #pragma omp parallel for
@@ -85,30 +84,37 @@ void stereo::compute() const {
 #pragma omp critical
 #endif
         {
-            correlation_and_idx_left.emplace_back(std::make_pair(best_correlation, std::reference_wrapper<data::keypoint>(keypoint)));
+            correlation_and_idx_left.insert(std::make_pair(keypoint.get_id(), std::make_pair(best_correlation, std::reference_wrapper<data::keypoint>(keypoint))));
         }
     }
 
     // 相関の中央値を求める
-    std::sort(correlation_and_idx_left.begin(), correlation_and_idx_left.end(),
-              [](const std::pair<int,data::keypoint&> &left, const std::pair<int,data::keypoint&> &right) {
-                    return left.first < right.first;
-                });
+//    std::sort(correlation_and_idx_left.begin(), correlation_and_idx_left.end(),
+//              [](const std::pair<int, std::pair<int,data::keypoint&>> &left, const std::pair<int, std::pair<int,data::keypoint&>> &right) {
+//                    return left.second.first < right.second.first;
+//                });
 
-    const auto median_i = correlation_and_idx_left.size() / 2;
+    std::vector<int> correlations;
+    for (const auto &correlation_pairs : correlation_and_idx_left) {
+        correlations.push_back(correlation_pairs.first);
+    }
+
+    std::sort(correlations.begin(), correlations.end());
+
+    const auto median_i = correlations.size() / 2;
     const float median_correlation = correlation_and_idx_left.empty()
                                          ? 0.0f
-                                         : correlation_and_idx_left.at(median_i).first;
+                                         : correlations.at(median_i);
     // 相関の中央値x2より相関が弱いものは破棄する
     const float correlation_thr = 2.0 * median_correlation;
 
     // 相関の中央値x2を閾値としているので，iはmedian_iから始めればよい
-    for (unsigned int i = median_i; i < correlation_and_idx_left.size(); ++i) {
-        const auto correlation = correlation_and_idx_left.at(i).first;
-        auto keypoint = correlation_and_idx_left.at(i).second;
+    for (const auto &correlation_pair : correlation_and_idx_left) {
+        const auto correlation = correlation_pair.first;
+        auto keypoint = correlation_pair.second;
         if (correlation_thr < correlation) {
-            keypoint.set_depth(-1);
-            keypoint.set_stereo_x_offset(-1);
+            keypoint.second.set_depth(-1);
+            keypoint.second.set_stereo_x_offset(-1);
         }
     }
 }
@@ -122,10 +128,9 @@ std::vector<std::vector<unsigned int>> stereo::get_right_keypoint_indices_in_eac
         indices_right_in_row.at(row).reserve(100);
     }
 
-    const unsigned int num_keypts_right = keypts_right_.size();
-    for (unsigned int idx_right = 0; idx_right < keypts_right_.size(); ++idx_right) {
+    for (const auto& keypoint_right : keypts_right_) {
         // 右画像の特徴点のy座標を取得
-        const auto& keypt_right = keypts_right_.at(idx_right);
+        const auto& keypt_right = keypoint_right.second;
         const float y_right = keypt_right.get_cv_keypoint().pt.y;
         // スケールに応じて座標の不定性を設定
         const float r = margin * scale_factors_.at(keypt_right.get_cv_keypoint().octave);
@@ -135,7 +140,7 @@ std::vector<std::vector<unsigned int>> stereo::get_right_keypoint_indices_in_eac
 
         // 上端と下端の間の行番号すべてについて，特徴点indexを保存しておく
         for (int row_right = min_r; row_right <= max_r; ++row_right) {
-            indices_right_in_row.at(row_right).push_back(idx_right);
+            indices_right_in_row.at(row_right).push_back(keypoint_right.first);
         }
     }
 

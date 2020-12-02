@@ -3,6 +3,9 @@
 //
 
 #include "audit_exporter.h"
+
+#include "openvslam/data/landmark.h"
+
 #include <fstream>
 #include <spdlog/spdlog.h>
 
@@ -44,7 +47,7 @@ namespace openvslam {
             landmark_file.open(save_path + "/landmarks" + std::to_string(keyframe->id_) + ".audit", std::ios::trunc);
             for (auto &landmark : keyframe->get_landmarks()) {
                 const auto &keypoint = keyframe->undist_keypts_.at(landmark.first);
-                landmark_file << keypoint.get_id() << "," << keypoint.get_segmentation_class() <<
+                landmark_file << landmark.second->id_ << "," << landmark.second->get_segmentation_class() <<
                               "," << keypoint.get_cv_keypoint().pt.x <<
                               "," << keypoint.get_cv_keypoint().pt.y <<
                               "," << keypoint.get_cv_keypoint().size <<

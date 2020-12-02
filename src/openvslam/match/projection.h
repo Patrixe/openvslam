@@ -43,7 +43,7 @@ public:
     //! 指定されたSim3を用いて，各々のkeyframeで観測されている3次元点をもう片方のkeyframeへ変換・再投影し，対応点を求める
     //! matched_lms_in_keyfrm_1には，keyframe1の特徴点(index)と対応する，keyframe2で観測されている3次元点が記録される
     unsigned int match_keyframes_mutually(data::keyframe* keyfrm_1, data::keyframe* keyfrm_2, std::map<int, data::landmark*>& matched_lms_in_keyfrm_1,
-                                          const float& s_12, const Mat33_t& rot_12, const Vec3_t& trans_12, const float margin) const;
+                                          const float& s_12, const Mat33_t& rot_12, const Vec3_t& trans_12, const float margin, bool slam_applicable_only) const;
 };
 
 } // namespace match

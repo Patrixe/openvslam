@@ -424,7 +424,7 @@ unsigned int projection::match_by_Sim3_transform(data::keyframe* keyfrm, const M
 }
 
 unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data::keyframe* keyfrm_2, std::map<int, data::landmark*>& matched_lms_in_keyfrm_1,
-                                                  const float& s_12, const Mat33_t& rot_12, const Vec3_t& trans_12, const float margin) const {
+                                                  const float& s_12, const Mat33_t& rot_12, const Vec3_t& trans_12, const float margin, bool slam_applicable_only) const {
     // keyframe1の姿勢
     const Mat33_t rot_1w = keyfrm_1->get_rotation();
     const Vec3_t trans_1w = keyfrm_1->get_translation();
@@ -450,6 +450,10 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
             continue;
         }
 
+        if (slam_applicable_only && !lm_pair.second->is_applicable_for_slam()) {
+            continue;
+        }
+
         auto* lm = matched_lms_in_keyfrm_1.at(lm_pair.first);
         const auto idx_2 = lm->get_index_in_keyframe(keyfrm_2);
 
@@ -472,6 +476,10 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
             auto* lm = lm_pair.second;
 
             if (lm->will_be_erased()) {
+                continue;
+            }
+
+            if (slam_applicable_only && !lm_pair.second->is_applicable_for_slam()) {
                 continue;
             }
 
@@ -519,6 +527,11 @@ unsigned int projection::match_keyframes_mutually(data::keyframe* keyfrm_1, data
 
             for (const auto neighbouring_keypoint_ref : keypoints_in_cell) {
                 auto neighbouring_keypoint = neighbouring_keypoint_ref.get();
+
+                if (slam_applicable_only && !neighbouring_keypoint.is_applicable_for_slam()) {
+                    continue;
+                }
+
                 const auto scale_level = static_cast<unsigned int>(neighbouring_keypoint.get_cv_keypoint().octave);
 
                 // TODO: keyfrm->get_keypts_in_cell()でスケールの判断をする

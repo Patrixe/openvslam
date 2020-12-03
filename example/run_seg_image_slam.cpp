@@ -296,7 +296,7 @@ int main(int argc, char *argv[]) {
     auto audit_output_path = op.add<popl::Value<std::string>>("a", "audit output path", "where to store the audit files");
     auto mask_img_path = op.add<popl::Value<std::string>>("", "mask", "mask image path", "");
     auto frame_skip = op.add<popl::Value<unsigned int>>("", "frame-skip", "interval of frame skip", 1);
-    auto eval_log = op.add<popl::Value<std::string>>("eval-log", "eval-log", "store trajectory and tracking times for evaluation");
+    auto eval_log = op.add<popl::Value<std::string>>("l", "eval-log", "store trajectory and tracking times for evaluation");
     auto no_sleep = op.add<popl::Switch>("", "no-sleep", "not wait for next frame in real time");
     auto auto_term = op.add<popl::Switch>("", "auto-term", "automatically terminate the viewer");
     auto debug_mode = op.add<popl::Switch>("", "debug", "debug mode");

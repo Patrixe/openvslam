@@ -60,5 +60,5 @@ bool openvslam::segmentation_config::allowed_for_landmark(int seg_cls) {
 }
 
 int openvslam::segmentation_config::get_segmentation_assignment_mode() {
-    return 0;
+    return 1;
 }

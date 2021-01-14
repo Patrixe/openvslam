@@ -20,7 +20,7 @@ static const unsigned int accepted_for_keypoints =
         | (1 << 10) // sky
         | (1 << 11) // human
         | (1 << 12) // rider
-        | (1 << 13) // car
+//        | (1 << 13) // car
         | (1 << 14) // truck
         | (1 << 15) // bus
         | (1 << 16) // train
@@ -30,7 +30,7 @@ static const unsigned int accepted_for_keypoints =
 
 const float* openvslam::segmentation_config::get_class_color(int seg_class) {
     static const std::map<int, color> class_colors{
-            std::pair<int, color>(0, color{{55, 55, 55}}), // no class
+            std::pair<int, color>(-1, color{{55, 55, 55}}), // no class
             std::pair<int, color>(0, color{{255, 255, 255}}), // roads
             std::pair<int, color>(1, color{{100, 100, 100}}), // sidewalk
             std::pair<int, color>(2, color{{000, 0, 255}}), //building
@@ -59,6 +59,7 @@ bool openvslam::segmentation_config::allowed_for_landmark(int seg_cls) {
     return ((1 << seg_cls) & accepted_for_keypoints) || seg_cls == -1;
 }
 
+// 0 = centered mode, 1 = ordered mode
 int openvslam::segmentation_config::get_segmentation_assignment_mode() {
-    return 1;
+    return 0;
 }

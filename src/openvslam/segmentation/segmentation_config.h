@@ -23,6 +23,8 @@ namespace openvslam {
          *  * 1: Majority voting of all pixels taken into account to get the actual segmentation class
          */
         static int get_segmentation_assignment_mode();
+
+        static int segmentation_mode;
     };
 }
 

@@ -5,6 +5,8 @@
 #include "segmentation_config.h"
 #include <map>
 
+int openvslam::segmentation_config::segmentation_mode = 0;
+
 static const unsigned int accepted_for_keypoints =
 //        0;
         (1 << 0) // roads
@@ -20,7 +22,7 @@ static const unsigned int accepted_for_keypoints =
         | (1 << 10) // sky
         | (1 << 11) // human
         | (1 << 12) // rider
-//        | (1 << 13) // car
+        | (1 << 13) // car
         | (1 << 14) // truck
         | (1 << 15) // bus
         | (1 << 16) // train
@@ -61,5 +63,5 @@ bool openvslam::segmentation_config::allowed_for_landmark(int seg_cls) {
 
 // 0 = centered mode, 1 = ordered mode
 int openvslam::segmentation_config::get_segmentation_assignment_mode() {
-    return 0;
+    return segmentation_mode;
 }

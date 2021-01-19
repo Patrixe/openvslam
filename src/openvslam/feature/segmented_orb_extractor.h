@@ -45,6 +45,9 @@ namespace openvslam {
                     const data::keypoint_container &keypts_to_distribute,
                     int min_x, int max_x, int min_y, int max_y, unsigned int num_keypts) const override;
 
+            virtual std::list<orb_extractor_node> initialize_nodes(const data::keypoint_container& keypts_to_distribute,
+                                                                   int min_x, int max_x, int min_y, int max_y) const override;
+
             static void transform_to_keypoint_structure(std::vector<cv::KeyPoint> &keypts_in_cell,
                                                  data::keypoint_container &seg_keypts_in_cell);
 

@@ -117,6 +117,9 @@ public:
     unsigned int first_keyfrm_id_ = 0;
     unsigned int num_observations_ = 0;
 
+    // error that was computed during the last pose optimization
+    double chi_squared_pose_error = 0;
+
     // Variables for frame tracking.
     Vec2_t reproj_in_tracking_;
     float x_right_in_tracking_;

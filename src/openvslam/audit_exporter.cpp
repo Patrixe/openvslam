@@ -53,7 +53,8 @@ namespace openvslam {
                               "," << keypoint.get_cv_keypoint().size <<
                               "," << keypoint.get_cv_keypoint().octave <<
                               "," << keypoint.get_cv_keypoint().response <<
-                              "," << keypoint.get_cv_keypoint().angle;
+                              "," << keypoint.get_cv_keypoint().angle <<
+                              "," << landmark.second->chi_squared_pose_error;
                 landmark_file << "\n";
             }
         } catch (const std::fstream::failure &f) {

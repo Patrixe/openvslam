@@ -97,9 +97,11 @@ unsigned int pose_optimizer::optimize(data::frame& frm) const {
         for (auto& pose_opt_edge_wrap : pose_opt_edge_wraps) {
             auto edge = pose_opt_edge_wrap.edge_;
 
-            if (frm.landmarks_.at(pose_opt_edge_wrap.idx_)->is_outlier()) {
-                edge->computeError();
-            }
+            edge->computeError();
+            frm.landmarks_.at(pose_opt_edge_wrap.idx_)->chi_squared_pose_error = edge->chi2();
+//            if (frm.landmarks_.at(pose_opt_edge_wrap.idx_)->is_outlier()) {
+//                edge->computeError();
+//            }
 
             if (pose_opt_edge_wrap.is_monocular_) {
                 if (chi_sq_2D < edge->chi2()) {

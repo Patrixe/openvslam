@@ -311,6 +311,84 @@ namespace openvslam {
             return find_keypoints_with_max_response(nodes);
         }
 
+        std::list<orb_extractor_node> segmented_orb_extractor::initialize_nodes(
+                const data::keypoint_container &keypts_to_distribute,
+                const int min_x, const int max_x, const int min_y, const int max_y) const {
+            // The aspect ratio of the target area for keypoint detection
+            const auto ratio = static_cast<double>(max_x - min_x) / (max_y - min_y);
+            // The width and height of the patches allocated to the initial node
+            double delta_x, delta_y;
+            // The number of columns or rows
+            unsigned int num_x_grid, num_y_grid;
+
+            if (ratio > 1) {
+                // If the aspect ratio is greater than 1, the patches are made in a horizontal direction
+                num_x_grid = std::round(ratio);
+                num_y_grid = 1;
+                delta_x = static_cast<double>(max_x - min_x) / num_x_grid;
+                delta_y = max_y - min_y;
+            } else {
+                // If the aspect ratio is equal to or less than 1, the patches are made in a vertical direction
+                num_x_grid = 1;
+                num_y_grid = std::round(1 / ratio);
+                delta_x = max_x - min_y;
+                delta_y = static_cast<double>(max_y - min_y) / num_y_grid;
+            }
+
+            // The number of the initial nodes
+            const unsigned int num_initial_nodes = num_x_grid * num_y_grid;
+
+            // A list of node
+            std::list<orb_extractor_node> nodes;
+
+            // Initial node objects
+            std::vector<orb_extractor_node *> initial_nodes;
+            initial_nodes.resize(num_initial_nodes);
+
+            // Create initial node substances
+            for (unsigned int i = 0; i < num_initial_nodes; ++i) {
+                orb_extractor_node node;
+
+                // x / y index of the node's patch in the grid
+                const unsigned int ix = i % num_x_grid;
+                const unsigned int iy = i / num_x_grid;
+
+                node.pt_begin_ = cv::Point2i(delta_x * ix, delta_y * iy);
+                node.pt_end_ = cv::Point2i(delta_x * (ix + 1), delta_y * (iy + 1));
+
+                nodes.push_back(node);
+                initial_nodes.at(i) = &nodes.back();
+            }
+
+            // Assign all keypoints to initial nodes which own keypoint's position
+            for (const auto &keypt : keypts_to_distribute) {
+                if (!keypt.second.is_applicable_for_slam()) {
+                    continue;
+                }
+
+                // x / y index of the patch where the keypt is placed
+                const unsigned int ix = keypt.second.get_cv_keypoint().pt.x / delta_x;
+                const unsigned int iy = keypt.second.get_cv_keypoint().pt.y / delta_y;
+
+                const unsigned int node_idx = ix + iy * num_x_grid;
+                initial_nodes.at(node_idx)->keypts_.insert(keypt);
+            }
+
+            auto iter = nodes.begin();
+            while (iter != nodes.end()) {
+                // Remove empty nodes
+                if (iter->keypts_.empty()) {
+                    iter = nodes.erase(iter);
+                    continue;
+                }
+                // Set the leaf node flag if the node has only one keypoint
+                iter->is_leaf_node_ = (iter->keypts_.size() == 1);
+                iter++;
+            }
+
+            return nodes;
+        }
+
         void segmented_orb_extractor::apply_segmentation_information(data::keypoint_container &keypts_in_cell,
                                                                         const cv::Mat &segmentation_information,
                                                                         float scale_factor, int offset_x, int offset_y) {

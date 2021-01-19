@@ -10,8 +10,6 @@ namespace openvslam {
                    const unsigned int num_ransac_iters, const unsigned int min_num_triangulated,
                    const float parallax_deg_thr, const float reproj_err_thr)
                 : ref_camera_(ref_frm.camera_),
-//                  ref_undist_keypts_(ref_frm.undist_keypts_.get_slam_applicable_cv_keypoints()),
-//                  ref_bearings_(ref_frm.undist_keypts_.get_slam_applicable_bearings()),
                   ref_undist_keypts_(),
                   ref_bearings_(),
                   num_ransac_iters_(num_ransac_iters), min_num_triangulated_(min_num_triangulated),

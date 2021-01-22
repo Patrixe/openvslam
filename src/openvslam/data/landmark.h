@@ -119,6 +119,10 @@ public:
 
     // error that was computed during the last pose optimization
     double chi_squared_pose_error = 0;
+    double pose_error = 0;
+
+    double ba_error = 0;
+    double chi_squared_ba_error = 0;
 
     // Variables for frame tracking.
     Vec2_t reproj_in_tracking_;

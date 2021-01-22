@@ -215,6 +215,9 @@ void local_bundle_adjuster::optimize(openvslam::data::keyframe* curr_keyfrm, boo
             }
 
             if (reproj_edge_wrap.is_monocular_) {
+                edge->computeError();
+                reproj_edge_wrap.lm_->ba_error = *edge->errorData();
+                reproj_edge_wrap.lm_->chi_squared_ba_error = edge->chi2();
                 if (chi_sq_2D < edge->chi2() || !reproj_edge_wrap.depth_is_positive()) {
                     reproj_edge_wrap.set_as_outlier();
                 }

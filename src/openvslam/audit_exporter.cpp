@@ -45,6 +45,7 @@ namespace openvslam {
         std::ofstream landmark_file;
         try {
             landmark_file.open(save_path + "/landmarks" + std::to_string(keyframe->id_) + ".audit", std::ios::trunc);
+            landmark_file << "meta," << keyframe->timestamp_ << "," << keyframe->src_frm_id_ << "\n";
             for (auto &landmark : keyframe->get_landmarks()) {
                 const auto &keypoint = keyframe->undist_keypts_.at(landmark.first);
                 landmark_file << landmark.second->id_ << "," << landmark.second->get_segmentation_class() <<
@@ -54,7 +55,10 @@ namespace openvslam {
                               "," << keypoint.get_cv_keypoint().octave <<
                               "," << keypoint.get_cv_keypoint().response <<
                               "," << keypoint.get_cv_keypoint().angle <<
-                              "," << landmark.second->chi_squared_pose_error;
+                              "," << landmark.second->pose_error <<
+                              "," << landmark.second->chi_squared_pose_error <<
+                              "," << landmark.second->ba_error <<
+                              "," << landmark.second->chi_squared_ba_error;
                 landmark_file << "\n";
             }
         } catch (const std::fstream::failure &f) {

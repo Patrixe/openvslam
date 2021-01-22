@@ -99,6 +99,7 @@ unsigned int pose_optimizer::optimize(data::frame& frm) const {
 
             edge->computeError();
             frm.landmarks_.at(pose_opt_edge_wrap.idx_)->chi_squared_pose_error = edge->chi2();
+            frm.landmarks_.at(pose_opt_edge_wrap.idx_)->pose_error = *edge->errorData();
 //            if (frm.landmarks_.at(pose_opt_edge_wrap.idx_)->is_outlier()) {
 //                edge->computeError();
 //            }

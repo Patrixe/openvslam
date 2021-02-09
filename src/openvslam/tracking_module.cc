@@ -42,7 +42,7 @@ namespace openvslam {
 
     tracking_module::tracking_module(const std::shared_ptr<config> &cfg, system *system, data::map_database *map_db,
                                      data::bow_vocabulary *bow_vocab, data::bow_database *bow_db,
-                                     const std::shared_ptr<segmentation_config> &seg_cfg)
+                                     const std::shared_ptr<segmentation_config> &seg_cfg, audit_exporter* auditer)
             : cfg_(cfg), camera_(cfg->camera_), system_(system), map_db_(map_db), bow_vocab_(bow_vocab),
               bow_db_(bow_db),
               initializer_(cfg->camera_->setup_type_, map_db, bow_db, cfg->yaml_node_),
@@ -60,6 +60,8 @@ namespace openvslam {
             if (camera_->setup_type_ == camera::setup_type_t::Stereo) {
                 extractor_right_ = new feature::segmented_orb_extractor(cfg_->orb_params_, seg_cfg);
             }
+
+            this->auditer = auditer;
         } else {
             extractor_left_ = new feature::orb_extractor(cfg_->orb_params_);
             if (camera_->setup_type_ == camera::setup_type_t::Monocular) {
@@ -268,6 +270,9 @@ namespace openvslam {
 
         if (tracking_state_ == tracker_state_t::Initializing) {
             if (!initialize()) {
+                if (auditer) {
+                    auditer->log_frame(this->curr_frm_, tracking_state_to_int(this->tracking_state_));
+                }
                 return;
             }
 
@@ -282,6 +287,9 @@ namespace openvslam {
 
             // state transition to Tracking mode
             tracking_state_ = tracker_state_t::Tracking;
+            if (auditer) {
+                auditer->log_frame(this->curr_frm_, tracking_state_to_int(this->tracking_state_));
+            }
         } else {
             // apply replace of landmarks observed in the last frame
             apply_landmark_replace();
@@ -317,6 +325,10 @@ namespace openvslam {
                 && curr_frm_.id_ - initializer_.get_initial_frame_id() < camera_->fps_ * init_retry_thr) {
                 spdlog::info("tracking lost within {} sec after initialization", init_retry_thr);
                 system_->request_reset();
+
+                if (auditer) {
+                    auditer->log_frame(this->curr_frm_, tracking_state_to_int(this->tracking_state_));
+                }
                 return;
             }
 
@@ -337,6 +349,10 @@ namespace openvslam {
                 } else {
                     ++lm;
                 }
+            }
+
+            if (auditer) {
+                auditer->log_frame(this->curr_frm_, tracking_state_to_int(this->tracking_state_));
             }
         }
 
@@ -431,7 +447,6 @@ namespace openvslam {
         search_local_landmarks();
 
         // optimize the pose
-        Mat44_t &camera_pose_before = curr_frm_.cam_pose_cw_;
         pose_optimizer_.optimize(curr_frm_);
 
         // count up the number of tracked landmarks
@@ -632,4 +647,16 @@ namespace openvslam {
         return tracking_state_ == tracker_state_t::Tracking;
     }
 
+    int tracking_module::tracking_state_to_int(openvslam::tracker_state_t& state) {
+        switch (state) {
+            case tracker_state_t::NotInitialized:
+                return 0;
+            case tracker_state_t::Initializing:
+                return 1;
+            case tracker_state_t::Tracking:
+                return 2;
+            case tracker_state_t::Lost:
+                return 3;
+        }
+    }
 } // namespace openvslam

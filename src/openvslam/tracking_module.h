@@ -1,14 +1,15 @@
 #ifndef OPENVSLAM_TRACKING_MODULE_H
 #define OPENVSLAM_TRACKING_MODULE_H
 
+#include <mutex>
 #include "openvslam/type.h"
 #include "openvslam/data/frame.h"
 #include "openvslam/module/initializer.h"
 #include "openvslam/module/relocalizer.h"
 #include "openvslam/module/keyframe_inserter.h"
 #include "openvslam/module/frame_tracker.h"
+#include "audit_exporter.h"
 
-#include <mutex>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
@@ -42,7 +43,8 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW tracking_module(const std::shared_ptr<config> &cfg, system *system,
                                                     data::map_database *map_db,
                                                     data::bow_vocabulary *bow_vocab, data::bow_database *bow_db,
-                                                    const std::shared_ptr<segmentation_config> &seg_cfg);
+                                                    const std::shared_ptr<segmentation_config> &seg_cfg,
+                                                    audit_exporter* auditer);
 
 
     //! Constructor
@@ -176,6 +178,8 @@ protected:
     //! Insert the new keyframe derived from the current frame
     void insert_new_keyframe();
 
+    int tracking_state_to_int(tracker_state_t& state);
+
     //! system
     system* system_ = nullptr;
     //! mapping module
@@ -202,6 +206,8 @@ protected:
 
     //! initializer
     module::initializer initializer_;
+
+    openvslam::audit_exporter* auditer;
 
     //! frame tracker for current frame
     const module::frame_tracker frame_tracker_;

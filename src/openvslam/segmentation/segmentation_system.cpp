@@ -22,7 +22,7 @@ namespace openvslam {
 
         auditer = new class audit_exporter(cfg);
         // tracking module
-        tracker_ = new tracking_module(cfg_, this, map_db_, bow_vocab_, bow_db_, seg_cfg);
+        tracker_ = new tracking_module(cfg_, this, map_db_, bow_vocab_, bow_db_, seg_cfg, auditer);
         // mapping module
         mapper_ = new mapping_module(map_db_, camera_->setup_type_ == camera::setup_type_t::Monocular, auditer);
         // global optimization module

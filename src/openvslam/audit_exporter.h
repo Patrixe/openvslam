@@ -6,6 +6,7 @@
 #define OPENVSLAM_AUDIT_EXPORTER_H
 
 #include "openvslam/data/keyframe.h"
+#include "openvslam/data/frame.h"
 #include "config.h"
 
 namespace openvslam {
@@ -17,6 +18,8 @@ namespace openvslam {
             audit_exporter(std::shared_ptr<config> cfg);
 
             void log_keyframe(const data::keyframe* keyframe);
+
+            void log_frame(const data::frame& frame, int tracking_state);
 
         private:
             std::string save_path;

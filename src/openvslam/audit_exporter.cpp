@@ -15,8 +15,39 @@ namespace openvslam {
 
     void audit_exporter::log_keyframe(const data::keyframe *keyframe) {
         if (cfg->do_audit) {
-            log_keypoints(keyframe);
+            //log_keypoints(keyframe);
             log_landmarks(keyframe);
+        }
+    }
+
+    void audit_exporter:: log_frame(const data::frame& frame, int tracking_state) {
+        if (cfg->do_audit) {
+            std::ofstream frame_file;
+            try {
+                int keyframe_id = frame.ref_keyfrm_ ? frame.ref_keyfrm_->id_ : -1;
+                frame_file.open(save_path + "/frame" + std::to_string(frame.id_) + ".audit", std::ios::trunc);
+                frame_file << "meta," << frame.id_ << "," << tracking_state << ","
+                           << keyframe_id << "\n";
+                for (auto &landmark : frame.landmarks_) {
+                    const auto &keypoint = frame.undist_keypts_.at(landmark.first);
+                    frame_file << landmark.second->id_ << "," << landmark.second->get_segmentation_class() <<
+                               "," << keypoint.get_cv_keypoint().pt.x <<
+                               "," << keypoint.get_cv_keypoint().pt.y <<
+                               "," << keypoint.get_cv_keypoint().size <<
+                               "," << keypoint.get_cv_keypoint().octave <<
+                               "," << keypoint.get_cv_keypoint().response <<
+                               "," << keypoint.get_cv_keypoint().angle <<
+                               "," << landmark.second->pose_error <<
+                               "," << landmark.second->chi_squared_pose_error <<
+                               "," << landmark.second->ba_error <<
+                               "," << landmark.second->chi_squared_ba_error;
+                    frame_file << "\n";
+                }
+            } catch (const std::fstream::failure &f) {
+                spdlog::error("Failed to write to frame file: {}", f.what());
+            }
+
+            frame_file.close();
         }
     }
 

@@ -301,6 +301,9 @@ namespace openvslam {
             curr_frm_.ref_keyfrm_ = ref_keyfrm_;
 
             auto succeeded = track_current_frame();
+            if (auditer) {
+                auditer->log_frame(this->curr_frm_, tracking_state_to_int(this->tracking_state_));
+            }
 
             // update the local map and optimize the camera pose of the current frame
             if (succeeded) {
@@ -349,10 +352,6 @@ namespace openvslam {
                 } else {
                     ++lm;
                 }
-            }
-
-            if (auditer) {
-                auditer->log_frame(this->curr_frm_, tracking_state_to_int(this->tracking_state_));
             }
         }
 

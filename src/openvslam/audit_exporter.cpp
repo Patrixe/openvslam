@@ -75,7 +75,7 @@ namespace openvslam {
     void audit_exporter::log_landmarks(const data::keyframe *keyframe) {
         std::ofstream landmark_file;
         try {
-            landmark_file.open(save_path + "/landmarks" + std::to_string(keyframe->id_) + ".audit", std::ios::trunc);
+            landmark_file.open(save_path + "/keyframe" + std::to_string(keyframe->id_) + ".audit", std::ios::trunc);
             landmark_file << "meta," << keyframe->timestamp_ << "," << keyframe->src_frm_id_ << "\n";
             for (auto &landmark : keyframe->get_landmarks()) {
                 const auto &keypoint = keyframe->undist_keypts_.at(landmark.first);

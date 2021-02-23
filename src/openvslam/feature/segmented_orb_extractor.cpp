@@ -126,7 +126,9 @@ namespace openvslam {
                                                min_border_x + keypt.second.get_cv_keypoint().pt.x, scale_factor)) {
                                     continue;
                                 }
-                                keypts_to_distribute.insert(keypt);
+                                if (keypt.second.is_applicable_for_slam()) {
+                                    keypts_to_distribute.insert(keypt);
+                                }
                             }
                         }
                     }
@@ -360,8 +362,9 @@ namespace openvslam {
                 initial_nodes.at(i) = &nodes.back();
             }
 
-            // Assign all keypoints to initial nodes which own keypoint's position
+            // Assign all key points to initial nodes which own keypoint's position
             for (const auto &keypt : keypts_to_distribute) {
+                // remove all key points which are deemed not applicable for slam
                 if (!keypt.second.is_applicable_for_slam()) {
                     continue;
                 }
@@ -437,74 +440,78 @@ namespace openvslam {
                                                                     int offset_x, int offset_y,
                                                                     const std::pair<const int, data::keypoint> &keypoint,
                                                                     std::map<int, int, std::greater<int>> &class_count) const {
+            // define the radius of the circle in which we test for the segmentation class
+            int small_step = 1; // default 1
+            int large_step = 3; // default 3
+            int diagonal_step = 2; // default 2
             // left three
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 1) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 3) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - small_step) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - large_step) * scale_factor)]++;
 
             class_count[segmentation_information.at<uchar>(
                     (keypoint.second.get_cv_keypoint().pt.y + offset_y) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 3) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - large_step) * scale_factor)]++;
 
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 1) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 3) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + small_step) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - large_step) * scale_factor)]++;
 
             // right three
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 1) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 3) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - small_step) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + large_step) * scale_factor)]++;
 
             class_count[segmentation_information.at<uchar>(
                     (keypoint.second.get_cv_keypoint().pt.y + offset_y) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 3) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + large_step) * scale_factor)]++;
 
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 1) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 3) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + small_step) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + large_step) * scale_factor)]++;
 
             // bottom three
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 3) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 1) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - large_step) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - small_step) * scale_factor)]++;
 
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 3) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - large_step) * scale_factor,
                     (keypoint.second.get_cv_keypoint().pt.x + offset_x) * scale_factor)]++;
 
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 3) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 1) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - large_step) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + small_step) * scale_factor)]++;
 
             // top three
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 3) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 1) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + large_step) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - small_step) * scale_factor)]++;
 
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 3) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + large_step) * scale_factor,
                     (keypoint.second.get_cv_keypoint().pt.x + offset_x) * scale_factor)]++;
 
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 3) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 1) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + large_step) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + small_step) * scale_factor)]++;
 
             // diagonal cases
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 2) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 2) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - diagonal_step) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - diagonal_step) * scale_factor)]++;
 
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - 2) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 2) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y - diagonal_step) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + diagonal_step) * scale_factor)]++;
 
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 2) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - 2) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + diagonal_step) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x - diagonal_step) * scale_factor)]++;
 
             class_count[segmentation_information.at<uchar>(
-                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + 2) * scale_factor,
-                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + 2) * scale_factor)]++;
+                    (keypoint.second.get_cv_keypoint().pt.y + offset_y + diagonal_step) * scale_factor,
+                    (keypoint.second.get_cv_keypoint().pt.x + offset_x + diagonal_step) * scale_factor)]++;
 
         }
     }

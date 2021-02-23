@@ -65,7 +65,7 @@ void mono_tracking(const std::shared_ptr<openvslam::config> &cfg,
         for (unsigned int i = 0; i < frames.size(); ++i) {
             const auto &frame = frames.at(i);
             const auto img = cv::imread(frame.img_path_, cv::IMREAD_UNCHANGED);
-            const auto seg_img = cv::imread(frame.seg_path_, cv::IMREAD_UNCHANGED);
+            const auto seg_img = cv::imread(frame.seg_path_, cv::IMREAD_GRAYSCALE);
 
             if (seg_img.empty()) {
                 std::cout << "No segmentation information for frame " << frame.img_path_ << std::endl;

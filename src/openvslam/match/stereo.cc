@@ -24,6 +24,10 @@ void stereo::compute() const {
 #ifdef USE_OPENMP
 #pragma omp parallel for
 #endif
+    int i = 0;
+    int dismissed = 0;
+    int dispsort = 0;
+    int nonvalid = 0;
     for (auto &keypoint_left : keypts_left_) {
         auto &keypoint = keypoint_left.second;
         const auto scale_level_left = keypoint.get_cv_keypoint().octave;
@@ -50,6 +54,7 @@ void stereo::compute() const {
                                          min_x_right, max_x_right, best_idx_right, best_hamm_dist);
         // ハミング距離が閾値を満たさなければ破棄
         if (hamm_dist_thr_ <= best_hamm_dist) {
+            dismissed++;
             continue;
         }
         const auto& keypt_right = keypts_right_.at(best_idx_right);
@@ -58,13 +63,16 @@ void stereo::compute() const {
         float best_x_right = -1.0f;
         float best_disp = -1.0f;
         float best_correlation = UINT_MAX;
-        const auto is_valid = compute_subpixel_disparity(keypoint.get_cv_keypoint(), keypt_right.get_cv_keypoint(), best_x_right, best_disp, best_correlation);
+        const auto is_valid = compute_subpixel_disparity(keypoint.get_cv_keypoint(), keypt_right.get_cv_keypoint(),
+                                                         best_x_right, best_disp, best_correlation);
         // 見つからなければ破棄
         if (!is_valid) {
+            nonvalid++;
             continue;
         }
         // 視差が有効範囲外であれば破棄
         if (best_disp < min_disp_ || max_disp_ <= best_disp) {
+            dispsort++;
             continue;
         }
 
@@ -90,33 +98,51 @@ void stereo::compute() const {
 
     // 相関の中央値を求める
 //    std::sort(correlation_and_idx_left.begin(), correlation_and_idx_left.end(),
-//              [](const std::pair<int, std::pair<int,data::keypoint&>> &left, const std::pair<int, std::pair<int,data::keypoint&>> &right) {
-//                    return left.second.first < right.second.first;
-//                });
+//              []   (const std::pair<int, std::pair<int, data::keypoint&>> &left,
+//                    const std::pair<int, std::pair<int, data::keypoint&>> &right) {
+//                        return left.second.first < right.second.first;
+//                    }
+//            );
 
-    std::vector<int> correlations;
+    std::vector<std::pair<int, std::reference_wrapper<data::keypoint>>> correlations;
     for (const auto &correlation_pairs : correlation_and_idx_left) {
-        correlations.push_back(correlation_pairs.first);
+        correlations.emplace_back(correlation_pairs.second);
     }
 
-    std::sort(correlations.begin(), correlations.end());
+    std::sort(correlations.begin(), correlations.end(),
+              []   (const std::pair<int, data::keypoint&> &left,
+                    const std::pair<int, data::keypoint&> &right) {
+                        return left.first < right.first;
+                    }
+            );
 
     const auto median_i = correlations.size() / 2;
     const float median_correlation = correlation_and_idx_left.empty()
                                          ? 0.0f
-                                         : correlations.at(median_i);
+                                         : correlations.at(median_i).first;
+//    const auto median_i = correlation_and_idx_left.size() / 2;
+//    const float median_correlation = correlation_and_idx_left.empty()
+//                                         ? 0.0f
+//                                         : correlation_and_idx_left.at(median_i).first;
     // 相関の中央値x2より相関が弱いものは破棄する
     const float correlation_thr = 2.0 * median_correlation;
 
     // 相関の中央値x2を閾値としているので，iはmedian_iから始めればよい
-    for (const auto &correlation_pair : correlation_and_idx_left) {
+    int j = 0;
+    for (unsigned int correlation_index = median_i; correlation_index < correlations.size(); correlation_index++) {
+        auto correlation_pair = correlations.at(correlation_index);
         const auto correlation = correlation_pair.first;
         auto keypoint = correlation_pair.second;
         if (correlation_thr < correlation) {
-            keypoint.second.set_depth(-1);
-            keypoint.second.set_stereo_x_offset(-1);
+            // TODO maybe we need to delete the points here, as they could not be matched
+            keypoint.get().set_depth(-1);
+            keypoint.get().set_stereo_x_offset(-1);
+        } else {
+            j++;
         }
     }
+
+    j = -1;
 }
 
 std::vector<std::vector<unsigned int>> stereo::get_right_keypoint_indices_in_each_row(const float margin) const {

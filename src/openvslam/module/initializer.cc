@@ -335,20 +335,21 @@ namespace openvslam {
             curr_frm.ref_keyfrm_ = curr_keyfrm;
             map_db_->update_frame_statistics(curr_frm, false);
 
-            for (unsigned int idx = 0; idx < curr_frm.undist_keypts_.size(); ++idx) {
+//            for (unsigned int idx = 0; idx < curr_frm.undist_keypts_.size(); ++idx) {
+            for (const auto &keypoint : curr_frm.undist_keypts_) {
                 // add a new landmark if tht corresponding depth is valid
-                const auto z = curr_frm.undist_keypts_.at(idx).get_depth();
+                const auto z = keypoint.second.get_depth();
                 if (z <= 0) {
                     continue;
                 }
 
                 // build a landmark
-                const Vec3_t pos_w = curr_frm.triangulate_stereo(idx);
+                const Vec3_t pos_w = curr_frm.triangulate_stereo(keypoint.second);
                 auto lm = new data::landmark(pos_w, curr_keyfrm, map_db_);
 
                 // set the associations to the new keyframe
-                lm->add_observation(curr_keyfrm, idx);
-                curr_keyfrm->add_landmark(lm, idx);
+                lm->add_observation(curr_keyfrm, keypoint.first);
+                curr_keyfrm->add_landmark(lm, keypoint.first);
 
                 // update the descriptor
                 lm->compute_descriptor();
@@ -356,7 +357,7 @@ namespace openvslam {
                 lm->update_normal_and_depth();
 
                 // set the 2D-3D associations to the current frame
-                curr_frm.landmarks_.at(idx) = lm;
+                curr_frm.landmarks_[keypoint.first] = lm;
 
                 // add the landmark to the map DB
                 map_db_->add_landmark(lm);

@@ -66,15 +66,15 @@ namespace openvslam {
                 spdlog::warn("frame {}: cannot extract any keypoints", id_);
             }
 
-            // Undistort keypoints
-            camera_->undistort_keypoints(keypts_, undist_keypts_);
-
             // Estimate depth with stereo match
             match::stereo stereo_matcher(extractor_left->image_pyramid_, extractor_right_->image_pyramid_,
                                          keypts_, keypts_right_,
                                          scale_factors_, inv_scale_factors_,
                                          camera->focal_x_baseline_, camera_->true_baseline_);
             stereo_matcher.compute();
+
+            // Undistort keypoints
+            camera_->undistort_keypoints(keypts_, undist_keypts_);
 
             // Convert to bearing vector
             camera->convert_keypoints_to_bearings(undist_keypts_);

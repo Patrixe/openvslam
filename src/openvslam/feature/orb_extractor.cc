@@ -345,9 +345,7 @@ namespace openvslam {
 #pragma omp critical
 #endif
                         for (auto &keypt : keypts_in_cell) {
-                            if (keypt.response < 50) {
-                                continue;
-                            }
+
                             keypt.pt.x += j * cell_size;
                             keypt.pt.y += i * cell_size;
                             // Check if the keypoint is in the mask

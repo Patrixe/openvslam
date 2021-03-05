@@ -190,17 +190,17 @@ std::vector<std::reference_wrapper<const data::keypoint>> frame::get_keypoints_i
                                        min_level, max_level);
 }
 
-Vec3_t frame::triangulate_stereo(const unsigned int idx) {
+Vec3_t frame::triangulate_stereo(const data::keypoint &keypoint) {
     assert(camera_->setup_type_ != camera::setup_type_t::Monocular);
 
     switch (camera_->model_type_) {
         case camera::model_type_t::Perspective: {
             auto camera = static_cast<camera::perspective*>(camera_);
 
-            const float depth = undist_keypts_.at(idx).get_depth();
+            const float depth = keypoint.get_depth();
             if (0.0 < depth) {
-                const float x = undist_keypts_.at(idx).get_cv_keypoint().pt.x;
-                const float y = undist_keypts_.at(idx).get_cv_keypoint().pt.y;
+                const float x = keypoint.get_cv_keypoint().pt.x;
+                const float y = keypoint.get_cv_keypoint().pt.y;
                 const float unproj_x = (x - camera->cx_) * depth * camera->fx_inv_;
                 const float unproj_y = (y - camera->cy_) * depth * camera->fy_inv_;
                 const Vec3_t pos_c{unproj_x, unproj_y, depth};
@@ -215,10 +215,10 @@ Vec3_t frame::triangulate_stereo(const unsigned int idx) {
         case camera::model_type_t::Fisheye: {
             auto camera = static_cast<camera::fisheye*>(camera_);
 
-            const float depth = undist_keypts_.at(idx).get_depth();
+            const float depth = keypoint.get_depth();
             if (0.0 < depth) {
-                const float x = undist_keypts_.at(idx).get_cv_keypoint().pt.x;
-                const float y = undist_keypts_.at(idx).get_cv_keypoint().pt.y;
+                const float x = keypoint.get_cv_keypoint().pt.x;
+                const float y = keypoint.get_cv_keypoint().pt.y;
                 const float unproj_x = (x - camera->cx_) * depth * camera->fx_inv_;
                 const float unproj_y = (y - camera->cy_) * depth * camera->fy_inv_;
                 const Vec3_t pos_c{unproj_x, unproj_y, depth};

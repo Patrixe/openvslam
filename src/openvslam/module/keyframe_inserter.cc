@@ -148,20 +148,20 @@ data::keyframe* keyframe_inserter::insert_new_keyframe(data::frame& curr_frm) {
         // idxに対応する3次元点がある場合はstereo triangulationしない
         {
             // TODO pali: Still relies on indices, tbd!
-            auto lm = curr_frm.landmarks_.at(idx);
-            if (lm) {
-                assert(lm->has_observation());
+//            auto lm = curr_frm.landmarks_.at(idx);
+            if (curr_frm.landmarks_.find(idx) != curr_frm.landmarks_.end()) {
+                assert(curr_frm.landmarks_.at(idx)->has_observation());
                 continue;
             }
         }
 
         // idxに対応する3次元がなければstereo triangulationで作る
-        const Vec3_t pos_w = curr_frm.triangulate_stereo(idx);
+        const Vec3_t pos_w = curr_frm.triangulate_stereo(curr_frm.undist_keypts_.at(idx));
         auto lm = new data::landmark(pos_w, keyfrm, map_db_);
 
         lm->add_observation(keyfrm, idx);
         keyfrm->add_landmark(lm, idx);
-        curr_frm.landmarks_.at(idx) = lm;
+        curr_frm.landmarks_[idx] = lm;
 
         lm->compute_descriptor();
         lm->update_normal_and_depth();

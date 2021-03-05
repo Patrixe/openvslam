@@ -180,7 +180,7 @@ namespace openvslam {
              * @param idx
              * @return
              */
-            Vec3_t triangulate_stereo(const unsigned int idx);
+            Vec3_t triangulate_stereo(const data::keypoint &keypoint);
 
             //! current frame ID
             unsigned int id_;
@@ -265,7 +265,6 @@ namespace openvslam {
             //! list of 1 / sigma^2 for optimization
             std::vector<float> inv_level_sigma_sq_;
 
-        protected:
             //! enumeration to control the behavior of extract_orb()
             enum class image_side {
                 Left,
@@ -280,6 +279,7 @@ namespace openvslam {
              */
             void extract_orb(const cv::Mat &img, const cv::Mat &mask, const image_side &img_side = image_side::Left);
 
+        protected:
             /**
              * Compute disparities from depth information in depthmap
              * @param right_img_depth

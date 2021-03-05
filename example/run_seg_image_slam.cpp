@@ -189,8 +189,8 @@ void stereo_tracking(const std::shared_ptr<openvslam::config> &cfg,
             const auto &right_frame = frames_right.at(i);
             const auto left_img = cv::imread(left_frame.img_path_, cv::IMREAD_UNCHANGED);
             const auto right_img = cv::imread(right_frame.img_path_, cv::IMREAD_UNCHANGED);
-            const auto left_seg = cv::imread(left_frame.seg_path_, cv::IMREAD_UNCHANGED);
-            const auto right_seg = cv::imread(right_frame.seg_path_, cv::IMREAD_UNCHANGED);
+            const auto left_seg = cv::imread(left_frame.seg_path_, cv::IMREAD_GRAYSCALE);
+            const auto right_seg = cv::imread(right_frame.seg_path_, cv::IMREAD_GRAYSCALE);
 
             const auto tp_1 = std::chrono::steady_clock::now();
 
